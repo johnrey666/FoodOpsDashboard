@@ -259,8 +259,11 @@
                         RenderTransformOrigin="0.5,0.5">
                     <Border.RenderTransform>
                         <TransformGroup>
+                            <!-- Local Y-flip: ScaleX = |cos(angle)| -->
                             <ScaleTransform x:Name="MetricDetailFlip" ScaleX="1" ScaleY="1"/>
-                            <SkewTransform x:Name="MetricDetailSkew" AngleY="0"/>
+                            <!-- Fly + grow from card → center -->
+                            <ScaleTransform x:Name="MetricDetailGrow" ScaleX="1" ScaleY="1"/>
+                            <TranslateTransform x:Name="MetricDetailMove"/>
                         </TransformGroup>
                     </Border.RenderTransform>
                     <Border.Effect>

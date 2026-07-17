@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FoodOpsDashboard")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+55a074108d386b39119fed11c72464d17b948eb1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6f5b550cf778eb6bd608adc8e6b9c56669112976")]
 [assembly: System.Reflection.AssemblyProductAttribute("FoodOpsDashboard")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FoodOpsDashboard")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

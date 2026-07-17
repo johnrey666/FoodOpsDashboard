@@ -7,7 +7,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
-using System.Windows.Threading;
 using FoodOpsDashboard.Models;
 using FoodOpsDashboard.Services;
 
@@ -23,11 +22,41 @@ public partial class MainWindow : Window
     private bool _metricDetailAnimating;
     private Rect _metricFlipOrigin;
     private FrameworkElement? _metricFlipSource;
-    private DispatcherTimer? _metricFaceSwapTimer;
     private const double MetricModalWidth = 840;
     private const double MetricModalHeight = 620;
-    private static readonly Duration FlipTravel = new(TimeSpan.FromMilliseconds(2000));
-    private static readonly Duration FlipClose = new(TimeSpan.FromMilliseconds(1300));
+    /// <summary>One half-turn (front→back) = land on detail face.</summary>
+    private const double FlipOpenDegrees = 180;
+    private static readonly Duration FlipTravel = new(TimeSpan.FromMilliseconds(1600));
+    private static readonly Duration FlipClose = new(TimeSpan.FromMilliseconds(1100));
+
+    /// <summary>
+    /// Card spin angle in degrees. ScaleX = |cos(angle)| so it reads as a real Y-axis flip,
+    /// and the face swaps whenever cos goes negative (back of card).
+    /// </summary>
+    public static readonly DependencyProperty FlipAngleProperty =
+        DependencyProperty.Register(
+            nameof(FlipAngle),
+            typeof(double),
+            typeof(MainWindow),
+            new PropertyMetadata(0.0, OnFlipAngleChanged));
+
+    public double FlipAngle
+    {
+        get => (double)GetValue(FlipAngleProperty);
+        set => SetValue(FlipAngleProperty, value);
+    }
+
+    private static void OnFlipAngleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var w = (MainWindow)d;
+        double angle = (double)e.NewValue;
+        double cos = Math.Cos(angle * Math.PI / 180.0);
+        w.MetricDetailFlip.ScaleX = Math.Max(0.001, Math.Abs(cos));
+
+        bool showBack = cos < 0;
+        w.MetricDetailFront.Visibility = showBack ? Visibility.Collapsed : Visibility.Visible;
+        w.MetricDetailBack.Visibility = showBack ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public MainWindow()
     {
@@ -579,113 +608,126 @@ public partial class MainWindow : Window
         MetricDetailModal.Height = r.Height;
     }
 
+    private void ClearFlightAnimations()
+    {
+        MetricDetailMove.BeginAnimation(TranslateTransform.XProperty, null);
+        MetricDetailMove.BeginAnimation(TranslateTransform.YProperty, null);
+        MetricDetailGrow.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        MetricDetailGrow.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        BeginAnimation(FlipAngleProperty, null);
+        MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty, null);
+    }
+
     private void PlayOpenCardFlip(FrameworkElement sourceCard)
     {
         _metricDetailAnimating = true;
         _metricFlipSource = sourceCard;
-        StopFaceSwapTimer();
         MetricDetailOverlay.Visibility = Visibility.Visible;
         MetricDetailOverlay.UpdateLayout();
 
         _metricFlipOrigin = GetElementRectIn(sourceCard, MetricDetailStage);
         var target = GetCenteredModalRect();
 
-        // Source card disappears under the flying copy so it feels like the same card
         sourceCard.Opacity = 0;
 
-        PlaceModal(_metricFlipOrigin);
-        MetricDetailFront.Visibility = Visibility.Visible;
-        MetricDetailBack.Visibility = Visibility.Collapsed;
-        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, null);
-        MetricDetailFlip.ScaleX = 1;
-        MetricDetailFlip.ScaleY = 1;
-        MetricDetailSkew.AngleY = 0;
+        // Park modal at final size/position; flight is pure transforms (grow + move + spin)
+        PlaceModal(target);
+        ClearFlightAnimations();
+
+        double originCx = _metricFlipOrigin.X + _metricFlipOrigin.Width / 2;
+        double originCy = _metricFlipOrigin.Y + _metricFlipOrigin.Height / 2;
+        double targetCx = target.X + target.Width / 2;
+        double targetCy = target.Y + target.Height / 2;
+
+        double startScale = Math.Min(
+            _metricFlipOrigin.Width / Math.Max(1, target.Width),
+            _metricFlipOrigin.Height / Math.Max(1, target.Height));
+        startScale = Math.Clamp(startScale, 0.08, 1.0);
+
+        MetricDetailGrow.ScaleX = startScale;
+        MetricDetailGrow.ScaleY = startScale;
+        MetricDetailMove.X = originCx - targetCx;
+        MetricDetailMove.Y = originCy - targetCy;
+        FlipAngle = 0;
         MetricDetailScrim.Opacity = 0;
         MetricDetailModal.Opacity = 1;
 
-        var travelEase = new QuarticEase { EasingMode = EasingMode.EaseInOut };
+        var ease = new QuarticEase { EasingMode = EasingMode.EaseInOut };
+
         MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty,
-            new DoubleAnimation(0, 1, FlipTravel) { EasingFunction = new SineEase { EasingMode = EasingMode.EaseOut } });
-        AnimateCanvasRect(_metricFlipOrigin, target, FlipTravel, travelEase);
+            new DoubleAnimation(0, 1, FlipTravel)
+            {
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseOut }
+            });
 
-        // Soft double flip — never collapses fully to avoid a harsh edge snap
-        var flipEase = new CubicEase { EasingMode = EasingMode.EaseInOut };
-        var flip = new DoubleAnimationUsingKeyFrames { Duration = FlipTravel };
-        flip.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromPercent(0)));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.28), flipEase));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(0.50), flipEase));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.78), flipEase));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(1.0), flipEase));
-        flip.Completed += (_, _) => _metricDetailAnimating = false;
+        MetricDetailMove.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(MetricDetailMove.X, 0, FlipTravel) { EasingFunction = ease });
+        MetricDetailMove.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(MetricDetailMove.Y, 0, FlipTravel) { EasingFunction = ease });
+        MetricDetailGrow.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(startScale, 1, FlipTravel) { EasingFunction = ease });
+        MetricDetailGrow.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(startScale, 1, FlipTravel) { EasingFunction = ease });
 
-        var skew = new DoubleAnimationUsingKeyFrames { Duration = FlipTravel };
-        skew.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromPercent(0)));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(2.2, KeyTime.FromPercent(0.28), flipEase));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(0.50), flipEase));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(-2.2, KeyTime.FromPercent(0.78), flipEase));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(1.0), flipEase));
-
-        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, flip);
-        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, skew);
-
-        _metricFaceSwapTimer = new DispatcherTimer
+        // Real Y-spin via cos(angle): 0→180° = one face flip, lands on detail (back)
+        var spin = new DoubleAnimation(0, FlipOpenDegrees, FlipTravel)
         {
-            Interval = TimeSpan.FromMilliseconds(FlipTravel.TimeSpan.TotalMilliseconds * 0.78)
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
         };
-        _metricFaceSwapTimer.Tick += (_, _) =>
+        spin.Completed += (_, _) =>
         {
-            StopFaceSwapTimer();
-            MetricDetailFront.Visibility = Visibility.Collapsed;
-            MetricDetailBack.Visibility = Visibility.Visible;
+            BeginAnimation(FlipAngleProperty, null);
+            FlipAngle = FlipOpenDegrees;
+            _metricDetailAnimating = false;
         };
-        _metricFaceSwapTimer.Start();
-    }
-
-    private void AnimateCanvasRect(Rect from, Rect to, Duration duration, IEasingFunction ease)
-    {
-        MetricDetailModal.BeginAnimation(Canvas.LeftProperty,
-            new DoubleAnimation(from.X, to.X, duration) { EasingFunction = ease });
-        MetricDetailModal.BeginAnimation(Canvas.TopProperty,
-            new DoubleAnimation(from.Y, to.Y, duration) { EasingFunction = ease });
-        MetricDetailModal.BeginAnimation(FrameworkElement.WidthProperty,
-            new DoubleAnimation(from.Width, to.Width, duration) { EasingFunction = ease });
-        MetricDetailModal.BeginAnimation(FrameworkElement.HeightProperty,
-            new DoubleAnimation(from.Height, to.Height, duration) { EasingFunction = ease });
+        BeginAnimation(FlipAngleProperty, spin);
     }
 
     private void CloseMetricDetail()
     {
         if (MetricDetailOverlay.Visibility != Visibility.Visible || _metricDetailAnimating) return;
         _metricDetailAnimating = true;
-        StopFaceSwapTimer();
 
-        var current = new Rect(
-            Canvas.GetLeft(MetricDetailModal),
-            Canvas.GetTop(MetricDetailModal),
-            MetricDetailModal.ActualWidth > 0 ? MetricDetailModal.ActualWidth : MetricDetailModal.Width,
-            MetricDetailModal.ActualHeight > 0 ? MetricDetailModal.ActualHeight : MetricDetailModal.Height);
+        var target = GetCenteredModalRect();
         var origin = _metricFlipOrigin;
         var ease = new QuarticEase { EasingMode = EasingMode.EaseInOut };
-        var flipEase = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+        double originCx = origin.X + origin.Width / 2;
+        double originCy = origin.Y + origin.Height / 2;
+        double targetCx = target.X + target.Width / 2;
+        double targetCy = target.Y + target.Height / 2;
+
+        double endScale = Math.Min(
+            origin.Width / Math.Max(1, target.Width),
+            origin.Height / Math.Max(1, target.Height));
+        endScale = Math.Clamp(endScale, 0.08, 1.0);
+
+        double endX = originCx - targetCx;
+        double endY = originCy - targetCy;
 
         MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty,
             new DoubleAnimation(MetricDetailScrim.Opacity, 0, FlipClose)
             {
                 EasingFunction = new SineEase { EasingMode = EasingMode.EaseIn }
             });
-        AnimateCanvasRect(current, origin, FlipClose, ease);
 
-        // Soft double flip home; restore KPI face on the last edge
-        var flip = new DoubleAnimationUsingKeyFrames { Duration = FlipClose };
-        flip.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromPercent(0)));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.28), flipEase));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(0.50), flipEase));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.78), flipEase));
-        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(1.0), flipEase));
-        flip.Completed += (_, _) =>
+        MetricDetailMove.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(0, endX, FlipClose) { EasingFunction = ease });
+        MetricDetailMove.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(0, endY, FlipClose) { EasingFunction = ease });
+        MetricDetailGrow.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(1, endScale, FlipClose) { EasingFunction = ease });
+        MetricDetailGrow.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(1, endScale, FlipClose) { EasingFunction = ease });
+
+        var spin = new DoubleAnimation(FlipAngle, 0, FlipClose)
         {
-            ClearModalAnimations();
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+        };
+        spin.Completed += (_, _) =>
+        {
+            ClearFlightAnimations();
+            FlipAngle = 0;
             if (_metricFlipSource != null)
                 _metricFlipSource.Opacity = 1;
             _metricFlipSource = null;
@@ -693,47 +735,7 @@ public partial class MainWindow : Window
             MetricDetailCompositionPanel.Children.Clear();
             _metricDetailAnimating = false;
         };
-
-        var skew = new DoubleAnimationUsingKeyFrames { Duration = FlipClose };
-        skew.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromPercent(0)));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(-2.2, KeyTime.FromPercent(0.28), flipEase));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(0.50), flipEase));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(2.2, KeyTime.FromPercent(0.78), flipEase));
-        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(1.0), flipEase));
-
-        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, flip);
-        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, skew);
-
-        _metricFaceSwapTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(FlipClose.TimeSpan.TotalMilliseconds * 0.78)
-        };
-        _metricFaceSwapTimer.Tick += (_, _) =>
-        {
-            StopFaceSwapTimer();
-            MetricDetailBack.Visibility = Visibility.Collapsed;
-            MetricDetailFront.Visibility = Visibility.Visible;
-        };
-        _metricFaceSwapTimer.Start();
-    }
-
-    private void StopFaceSwapTimer()
-    {
-        if (_metricFaceSwapTimer == null) return;
-        _metricFaceSwapTimer.Stop();
-        _metricFaceSwapTimer = null;
-    }
-
-    private void ClearModalAnimations()
-    {
-        StopFaceSwapTimer();
-        MetricDetailModal.BeginAnimation(Canvas.LeftProperty, null);
-        MetricDetailModal.BeginAnimation(Canvas.TopProperty, null);
-        MetricDetailModal.BeginAnimation(FrameworkElement.WidthProperty, null);
-        MetricDetailModal.BeginAnimation(FrameworkElement.HeightProperty, null);
-        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, null);
-        MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty, null);
+        BeginAnimation(FlipAngleProperty, spin);
     }
 
     private void OnMetricDetailScrimClick(object sender, MouseButtonEventArgs e) => CloseMetricDetail();
@@ -746,7 +748,6 @@ public partial class MainWindow : Window
     /// </summary>
     private static double GrowthRate(double ty, double ly) =>
         ly != 0 ? (ty - ly) / Math.Abs(ly) : 0;
-
     private static Border GrBadge(double gr)
     {
         bool positive = gr >= 0;

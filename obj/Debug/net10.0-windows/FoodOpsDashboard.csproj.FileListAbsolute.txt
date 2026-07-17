@@ -39,3 +39,8 @@ C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check4\FoodOpsDashboard.d
 C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check4\FoodOpsDashboard.runtimeconfig.json
 C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check4\FoodOpsDashboard.dll
 C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check4\FoodOpsDashboard.pdb
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.exe
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.deps.json
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.runtimeconfig.json
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.dll
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.pdb
