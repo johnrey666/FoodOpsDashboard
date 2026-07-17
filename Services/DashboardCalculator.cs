@@ -136,4 +136,126 @@ public sealed class DashboardCalculator
         }
         return points;
     }
+
+    /// <summary>
+    /// Total OPEX = every account except Sales and Cost of Sales (includes HO).
+    /// </summary>
+    public MetricBreakdown ComputeTotalOpexBreakdown(int year, IReadOnlyCollection<string> months, string storeChoice)
+    {
+        var kpis = ComputeKpis(year, months, storeChoice);
+        var accounts = DataRepository.Accounts
+            .Where(a => a is not ("Sales" or "Cost of Sales"))
+            .ToArray();
+
+        var rows = SumAccounts(year, months, storeChoice, accounts, kpis.TY.Sales)
+            .OrderByDescending(r => Math.Abs(r.TY))
+            .ToList();
+
+        return new MetricBreakdown
+        {
+            Title = "Total OPEX",
+            Formula = "Sum of all accounts except Sales and Cost of Sales (includes HO).",
+            TY = kpis.TY.TotalOpex,
+            TGT = kpis.TGT.TotalOpex,
+            LY = kpis.LY.TotalOpex,
+            PctOfSales = kpis.TY.Sales != 0 ? kpis.TY.TotalOpex / kpis.TY.Sales : 0,
+            Rows = rows
+        };
+    }
+
+    /// <summary>
+    /// SBU EBITDA = SBU CM + Depreciation + Amortization.
+    /// </summary>
+    public MetricBreakdown ComputeSbuEbitdaBreakdown(int year, IReadOnlyCollection<string> months, string storeChoice)
+    {
+        var stores = GetSelectedStores(storeChoice);
+        var monthSet = months.Count == 0 ? null : months.ToHashSet(StringComparer.Ordinal);
+        var kpis = ComputeKpis(year, months, storeChoice);
+        double salesTy = kpis.TY.Sales;
+
+        double SumAccount(int y, string account, Func<DataRecord, double> value) =>
+            _repo.Records
+                .Where(r => r.Year == y
+                    && stores.Contains(r.Store)
+                    && (monthSet == null || monthSet.Count == 0 || monthSet.Contains(r.Month))
+                    && r.Account == account)
+                .Sum(value);
+
+        var depTy = SumAccount(year, "Depreciation", r => r.TY);
+        var depTgt = SumAccount(year, "Depreciation", r => r.TGT);
+        var depLy = SumAccount(year - 1, "Depreciation", r => r.TY);
+        var amortTy = SumAccount(year, "Amortization", r => r.TY);
+        var amortTgt = SumAccount(year, "Amortization", r => r.TGT);
+        var amortLy = SumAccount(year - 1, "Amortization", r => r.TY);
+
+        var rows = new List<MetricBreakdownRow>
+        {
+            new()
+            {
+                Label = "SBU CM",
+                TY = kpis.TY.SbuCm,
+                TGT = kpis.TGT.SbuCm,
+                LY = kpis.LY.SbuCm,
+                PctOfSales = salesTy != 0 ? kpis.TY.SbuCm / salesTy : 0
+            },
+            new()
+            {
+                Label = "Depreciation",
+                TY = depTy,
+                TGT = depTgt,
+                LY = depLy,
+                PctOfSales = salesTy != 0 ? depTy / salesTy : 0
+            },
+            new()
+            {
+                Label = "Amortization",
+                TY = amortTy,
+                TGT = amortTgt,
+                LY = amortLy,
+                PctOfSales = salesTy != 0 ? amortTy / salesTy : 0
+            }
+        };
+
+        return new MetricBreakdown
+        {
+            Title = "SBU EBITDA",
+            Formula = "SBU CM + Depreciation + Amortization.",
+            TY = kpis.TY.SbuEbitda,
+            TGT = kpis.TGT.SbuEbitda,
+            LY = kpis.LY.SbuEbitda,
+            PctOfSales = salesTy != 0 ? kpis.TY.SbuEbitda / salesTy : 0,
+            Rows = rows
+        };
+    }
+
+    private IEnumerable<MetricBreakdownRow> SumAccounts(
+        int year,
+        IReadOnlyCollection<string> months,
+        string storeChoice,
+        IEnumerable<string> accounts,
+        double salesTy)
+    {
+        var stores = GetSelectedStores(storeChoice);
+        var monthSet = months.Count == 0 ? null : months.ToHashSet(StringComparer.Ordinal);
+
+        bool InScope(DataRecord r, int y) =>
+            r.Year == y
+            && stores.Contains(r.Store)
+            && (monthSet == null || monthSet.Count == 0 || monthSet.Contains(r.Month));
+
+        foreach (var account in accounts)
+        {
+            double ty = _repo.Records.Where(r => InScope(r, year) && r.Account == account).Sum(r => r.TY);
+            double tgt = _repo.Records.Where(r => InScope(r, year) && r.Account == account).Sum(r => r.TGT);
+            double ly = _repo.Records.Where(r => InScope(r, year - 1) && r.Account == account).Sum(r => r.TY);
+            yield return new MetricBreakdownRow
+            {
+                Label = account,
+                TY = ty,
+                TGT = tgt,
+                LY = ly,
+                PctOfSales = salesTy != 0 ? ty / salesTy : 0
+            };
+        }
+    }
 }

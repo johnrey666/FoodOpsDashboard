@@ -5,7 +5,9 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using FoodOpsDashboard.Models;
 using FoodOpsDashboard.Services;
 
@@ -18,6 +20,14 @@ public partial class MainWindow : Window
     private IReadOnlyList<MonthlyTrendPoint>? _lastTrend;
     private string? _storeNameBeforeEdit;
     private bool _suppressFilterEvents;
+    private bool _metricDetailAnimating;
+    private Rect _metricFlipOrigin;
+    private FrameworkElement? _metricFlipSource;
+    private DispatcherTimer? _metricFaceSwapTimer;
+    private const double MetricModalWidth = 840;
+    private const double MetricModalHeight = 620;
+    private static readonly Duration FlipTravel = new(TimeSpan.FromMilliseconds(2000));
+    private static readonly Duration FlipClose = new(TimeSpan.FromMilliseconds(1300));
 
     public MainWindow()
     {
@@ -31,6 +41,15 @@ public partial class MainWindow : Window
 
         InitDataEntryFilters();
         StoreGrid.ItemsSource = _repo.Stores;
+
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape && MetricDetailOverlay.Visibility == Visibility.Visible)
+            {
+                CloseMetricDetail();
+                e.Handled = true;
+            }
+        };
 
         ShowView("dashboard");
         RefreshDashboard();
@@ -225,26 +244,45 @@ public partial class MainWindow : Window
         KpiPanel.Children.Add(BuildCard("Sales", k.TY.Sales, k.TGT.Sales, k.LY.Sales, null));
         KpiPanel.Children.Add(BuildCard("Cost of Sales", k.TY.CostOfSales, k.TGT.CostOfSales, k.LY.CostOfSales, PctOf(k.TY.CostOfSales, k.TY.Sales)));
         KpiPanel.Children.Add(BuildCard("Gross Profit", k.TY.GrossProfit, k.TGT.GrossProfit, k.LY.GrossProfit, PctOf(k.TY.GrossProfit, k.TY.Sales)));
-        KpiPanel.Children.Add(BuildCard("Total OPEX", k.TY.TotalOpex, k.TGT.TotalOpex, k.LY.TotalOpex, PctOf(k.TY.TotalOpex, k.TY.Sales)));
+        KpiPanel.Children.Add(BuildCard("Total OPEX", k.TY.TotalOpex, k.TGT.TotalOpex, k.LY.TotalOpex, PctOf(k.TY.TotalOpex, k.TY.Sales),
+            detailMetric: "Total OPEX"));
         KpiPanel.Children.Add(BuildCard("SBU CM", k.TY.SbuCm, k.TGT.SbuCm, k.LY.SbuCm, PctOf(k.TY.SbuCm, k.TY.Sales)));
-        KpiPanel.Children.Add(BuildCard("SBU EBITDA", k.TY.SbuEbitda, k.TGT.SbuEbitda, k.LY.SbuEbitda, PctOf(k.TY.SbuEbitda, k.TY.Sales)));
+        KpiPanel.Children.Add(BuildCard("SBU EBITDA", k.TY.SbuEbitda, k.TGT.SbuEbitda, k.LY.SbuEbitda, PctOf(k.TY.SbuEbitda, k.TY.Sales),
+            detailMetric: "SBU EBITDA"));
         KpiPanel.Children.Add(BuildCard("Net Income", k.TY.NetIncome, k.TGT.NetIncome, k.LY.NetIncome, PctOf(k.TY.NetIncome, k.TY.Sales)));
     }
 
     private static double? PctOf(double value, double sales) => sales != 0 ? value / sales : null;
 
-    private static Border BuildCard(string title, double ty, double tgt, double ly, double? pctOfSales)
+    private Border BuildCard(string title, double ty, double tgt, double ly, double? pctOfSales, string? detailMetric = null)
     {
         var stack = new StackPanel();
+        Border? card = null;
 
-        stack.Children.Add(new TextBlock
+        var titleRow = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+        if (detailMetric != null)
+        {
+            var detailsHint = new TextBlock
+            {
+                Text = "Details",
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)Application.Current.Resources["AccentBrush"],
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            DockPanel.SetDock(detailsHint, Dock.Right);
+            titleRow.Children.Add(detailsHint);
+        }
+        titleRow.Children.Add(new TextBlock
         {
             Text = title,
             FontSize = 11,
             FontWeight = FontWeights.Medium,
             Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
-            Margin = new Thickness(0, 0, 0, 6)
+            VerticalAlignment = VerticalAlignment.Center
         });
+        stack.Children.Add(titleRow);
 
         stack.Children.Add(new TextBlock
         {
@@ -281,7 +319,7 @@ public partial class MainWindow : Window
             });
         }
 
-        return new Border
+        card = new Border
         {
             Background = (Brush)Application.Current.Resources["CardBrush"],
             BorderBrush = (Brush)Application.Current.Resources["BorderBrush"],
@@ -291,7 +329,416 @@ public partial class MainWindow : Window
             Margin = new Thickness(0, 0, 8, 0),
             Child = stack
         };
+
+        if (detailMetric != null)
+        {
+            card.Cursor = Cursors.Hand;
+            card.ToolTip = $"Open {title} breakdown";
+            card.MouseLeftButtonUp += (_, _) => OpenMetricBreakdown(detailMetric, card, ty);
+            card.MouseEnter += (_, _) =>
+            {
+                card.BorderBrush = (Brush)Application.Current.Resources["AccentBrush"];
+                card.Background = (Brush)Application.Current.Resources["KpiHeroBrush"];
+            };
+            card.MouseLeave += (_, _) =>
+            {
+                card.BorderBrush = (Brush)Application.Current.Resources["BorderBrush"];
+                card.Background = (Brush)Application.Current.Resources["CardBrush"];
+            };
+        }
+
+        return card;
     }
+
+    private void OpenMetricBreakdown(string metric, FrameworkElement sourceCard, double tyAmount)
+    {
+        if (_metricDetailAnimating || MetricDetailOverlay.Visibility == Visibility.Visible) return;
+        if (YearCombo.SelectedItem is not int year) return;
+        if (StoreCombo.SelectedItem is not string store) return;
+
+        var months = GetSelectedMonths();
+        if (months.Count == 0)
+            months = DataRepository.Months.ToList();
+
+        MetricBreakdown breakdown = metric switch
+        {
+            "Total OPEX" => _calc.ComputeTotalOpexBreakdown(year, months, store),
+            "SBU EBITDA" => _calc.ComputeSbuEbitdaBreakdown(year, months, store),
+            _ => throw new ArgumentOutOfRangeException(nameof(metric), metric, null)
+        };
+
+        MetricDetailTitle.Text = breakdown.Title;
+        MetricDetailFormula.Text = "  " + breakdown.Formula;
+        MetricDetailFrontTitle.Text = breakdown.Title;
+        MetricDetailFrontAmount.Text = FormatPeso(tyAmount);
+        MetricDetailTy.Text = FormatPeso(breakdown.TY);
+        MetricDetailTgt.Text = FormatPeso(breakdown.TGT);
+        MetricDetailLy.Text = FormatPeso(breakdown.LY);
+        MetricDetailPctSales.Text = breakdown.PctOfSales.ToString("0.0%", CultureInfo.InvariantCulture);
+        MetricDetailGr.Text = breakdown.GrowthPct.ToString("+0.0%;-0.0%", CultureInfo.InvariantCulture);
+        MetricDetailGr.Foreground = (Brush)Application.Current.Resources[
+            breakdown.GrowthPct >= 0 ? "PositiveBrush" : "NegativeBrush"];
+        BuildCompositionInfographic(breakdown);
+
+        PlayOpenCardFlip(sourceCard);
+    }
+
+    private void BuildCompositionInfographic(MetricBreakdown breakdown)
+    {
+        MetricDetailCompositionPanel.Children.Clear();
+
+        // For OPEX, share is vs |TY| sum of abs; for EBITDA, share vs |components|
+        double denom = breakdown.Rows.Sum(r => Math.Abs(r.TY));
+        if (denom == 0) denom = 1;
+
+        var visibleRows = breakdown.Rows
+            .Where(r => Math.Abs(r.TY) > 0.5 || Math.Abs(r.TGT) > 0.5 || Math.Abs(r.LY) > 0.5)
+            .ToList();
+        if (visibleRows.Count == 0)
+            visibleRows = breakdown.Rows.ToList();
+
+        MetricDetailRowCount.Text = $"{visibleRows.Count} components · share of total";
+
+        // Accent palette for bars
+        var accents = new[]
+        {
+            Color.FromRgb(0x0E, 0xA5, 0xE9),
+            Color.FromRgb(0x38, 0xBD, 0xF8),
+            Color.FromRgb(0x06, 0xB6, 0xD4),
+            Color.FromRgb(0x14, 0xB8, 0xA6),
+            Color.FromRgb(0x64, 0x74, 0x8B)
+        };
+
+        int i = 0;
+        foreach (var row in visibleRows)
+        {
+            double share = Math.Abs(row.TY) / denom;
+            var accent = accents[i % accents.Length];
+            i++;
+
+            var rowBorder = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = (Brush)Application.Current.Resources["BorderBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(14, 12, 14, 12),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.6, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
+
+            // Left: label + share bar
+            var left = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+            var labelRow = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+            labelRow.Children.Add(new TextBlock
+            {
+                Text = share.ToString("0.0%", CultureInfo.InvariantCulture),
+                FontSize = 11,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(accent),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            DockPanel.SetDock(labelRow.Children[^1], Dock.Right);
+            labelRow.Children.Add(new TextBlock
+            {
+                Text = row.Label,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)Application.Current.Resources["TextPrimaryBrush"],
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            left.Children.Add(labelRow);
+
+            var track = new Border
+            {
+                Height = 8,
+                CornerRadius = new CornerRadius(4),
+                Background = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)),
+                ClipToBounds = true
+            };
+            var fill = new Border
+            {
+                Height = 8,
+                CornerRadius = new CornerRadius(4),
+                Background = new SolidColorBrush(accent),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = 0
+            };
+            // Bind width after layout via share of available track
+            track.SizeChanged += (_, e) =>
+            {
+                if (e.NewSize.Width > 0)
+                    fill.Width = Math.Max(2, e.NewSize.Width * share);
+            };
+            track.Child = fill;
+            left.Children.Add(track);
+            Grid.SetColumn(left, 0);
+            grid.Children.Add(left);
+
+            // Middle: TY / TGT / LY
+            var mid = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            mid.Children.Add(MetricMiniStat("TY", FormatPeso(row.TY)));
+            mid.Children.Add(MetricMiniStat("TGT", FormatPeso(row.TGT), muted: true));
+            mid.Children.Add(MetricMiniStat("LY", FormatPeso(row.LY), muted: true));
+            Grid.SetColumn(mid, 1);
+            grid.Children.Add(mid);
+
+            // Right: % sales + GR
+            var right = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+            right.Children.Add(new TextBlock
+            {
+                Text = row.PctOfSales.ToString("0.0%", CultureInfo.InvariantCulture) + " of sales",
+                FontSize = 11,
+                Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 0, 0, 6)
+            });
+            bool up = row.GrowthPct >= 0;
+            right.Children.Add(new Border
+            {
+                Background = up
+                    ? new SolidColorBrush(Color.FromRgb(0xEC, 0xFD, 0xF5))
+                    : new SolidColorBrush(Color.FromRgb(0xFF, 0xF1, 0xF2)),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(8, 4, 8, 4),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Child = new TextBlock
+                {
+                    Text = $"GR {(up ? "▲" : "▼")} {row.GrowthPct:+0.0%;-0.0%}",
+                    FontSize = 11,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = (Brush)Application.Current.Resources[up ? "PositiveBrush" : "NegativeBrush"]
+                }
+            });
+            Grid.SetColumn(right, 2);
+            grid.Children.Add(right);
+
+            rowBorder.Child = grid;
+            MetricDetailCompositionPanel.Children.Add(rowBorder);
+        }
+    }
+
+    private static StackPanel MetricMiniStat(string label, string value, bool muted = false)
+    {
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 0, 2),
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = label,
+                    FontSize = 9,
+                    FontWeight = FontWeights.Bold,
+                    Width = 28,
+                    Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                new TextBlock
+                {
+                    Text = value,
+                    FontSize = 11,
+                    FontWeight = muted ? FontWeights.Medium : FontWeights.SemiBold,
+                    Foreground = (Brush)Application.Current.Resources[muted ? "TextMutedBrush" : "TextPrimaryBrush"],
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            }
+        };
+    }
+
+    private static string FormatPeso(double value) =>
+        "\u20B1" + value.ToString("#,##0", CultureInfo.InvariantCulture);
+
+    private Rect GetElementRectIn(FrameworkElement element, FrameworkElement relativeTo)
+    {
+        var topLeft = element.TransformToVisual(relativeTo).Transform(new Point(0, 0));
+        return new Rect(topLeft.X, topLeft.Y, element.ActualWidth, element.ActualHeight);
+    }
+
+    private Rect GetCenteredModalRect()
+    {
+        double stageW = MetricDetailStage.ActualWidth;
+        double stageH = MetricDetailStage.ActualHeight;
+        double w = Math.Min(MetricModalWidth, Math.Max(320, stageW - 48));
+        double h = Math.Min(MetricModalHeight, Math.Max(280, stageH - 48));
+        return new Rect((stageW - w) / 2, (stageH - h) / 2, w, h);
+    }
+
+    private void PlaceModal(Rect r)
+    {
+        Canvas.SetLeft(MetricDetailModal, r.X);
+        Canvas.SetTop(MetricDetailModal, r.Y);
+        MetricDetailModal.Width = r.Width;
+        MetricDetailModal.Height = r.Height;
+    }
+
+    private void PlayOpenCardFlip(FrameworkElement sourceCard)
+    {
+        _metricDetailAnimating = true;
+        _metricFlipSource = sourceCard;
+        StopFaceSwapTimer();
+        MetricDetailOverlay.Visibility = Visibility.Visible;
+        MetricDetailOverlay.UpdateLayout();
+
+        _metricFlipOrigin = GetElementRectIn(sourceCard, MetricDetailStage);
+        var target = GetCenteredModalRect();
+
+        // Source card disappears under the flying copy so it feels like the same card
+        sourceCard.Opacity = 0;
+
+        PlaceModal(_metricFlipOrigin);
+        MetricDetailFront.Visibility = Visibility.Visible;
+        MetricDetailBack.Visibility = Visibility.Collapsed;
+        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, null);
+        MetricDetailFlip.ScaleX = 1;
+        MetricDetailFlip.ScaleY = 1;
+        MetricDetailSkew.AngleY = 0;
+        MetricDetailScrim.Opacity = 0;
+        MetricDetailModal.Opacity = 1;
+
+        var travelEase = new QuarticEase { EasingMode = EasingMode.EaseInOut };
+        MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0, 1, FlipTravel) { EasingFunction = new SineEase { EasingMode = EasingMode.EaseOut } });
+        AnimateCanvasRect(_metricFlipOrigin, target, FlipTravel, travelEase);
+
+        // Soft double flip — never collapses fully to avoid a harsh edge snap
+        var flipEase = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        var flip = new DoubleAnimationUsingKeyFrames { Duration = FlipTravel };
+        flip.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromPercent(0)));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.28), flipEase));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(0.50), flipEase));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.78), flipEase));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(1.0), flipEase));
+        flip.Completed += (_, _) => _metricDetailAnimating = false;
+
+        var skew = new DoubleAnimationUsingKeyFrames { Duration = FlipTravel };
+        skew.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromPercent(0)));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(2.2, KeyTime.FromPercent(0.28), flipEase));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(0.50), flipEase));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(-2.2, KeyTime.FromPercent(0.78), flipEase));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(1.0), flipEase));
+
+        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, flip);
+        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, skew);
+
+        _metricFaceSwapTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(FlipTravel.TimeSpan.TotalMilliseconds * 0.78)
+        };
+        _metricFaceSwapTimer.Tick += (_, _) =>
+        {
+            StopFaceSwapTimer();
+            MetricDetailFront.Visibility = Visibility.Collapsed;
+            MetricDetailBack.Visibility = Visibility.Visible;
+        };
+        _metricFaceSwapTimer.Start();
+    }
+
+    private void AnimateCanvasRect(Rect from, Rect to, Duration duration, IEasingFunction ease)
+    {
+        MetricDetailModal.BeginAnimation(Canvas.LeftProperty,
+            new DoubleAnimation(from.X, to.X, duration) { EasingFunction = ease });
+        MetricDetailModal.BeginAnimation(Canvas.TopProperty,
+            new DoubleAnimation(from.Y, to.Y, duration) { EasingFunction = ease });
+        MetricDetailModal.BeginAnimation(FrameworkElement.WidthProperty,
+            new DoubleAnimation(from.Width, to.Width, duration) { EasingFunction = ease });
+        MetricDetailModal.BeginAnimation(FrameworkElement.HeightProperty,
+            new DoubleAnimation(from.Height, to.Height, duration) { EasingFunction = ease });
+    }
+
+    private void CloseMetricDetail()
+    {
+        if (MetricDetailOverlay.Visibility != Visibility.Visible || _metricDetailAnimating) return;
+        _metricDetailAnimating = true;
+        StopFaceSwapTimer();
+
+        var current = new Rect(
+            Canvas.GetLeft(MetricDetailModal),
+            Canvas.GetTop(MetricDetailModal),
+            MetricDetailModal.ActualWidth > 0 ? MetricDetailModal.ActualWidth : MetricDetailModal.Width,
+            MetricDetailModal.ActualHeight > 0 ? MetricDetailModal.ActualHeight : MetricDetailModal.Height);
+        var origin = _metricFlipOrigin;
+        var ease = new QuarticEase { EasingMode = EasingMode.EaseInOut };
+        var flipEase = new CubicEase { EasingMode = EasingMode.EaseInOut };
+
+        MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(MetricDetailScrim.Opacity, 0, FlipClose)
+            {
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseIn }
+            });
+        AnimateCanvasRect(current, origin, FlipClose, ease);
+
+        // Soft double flip home; restore KPI face on the last edge
+        var flip = new DoubleAnimationUsingKeyFrames { Duration = FlipClose };
+        flip.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, KeyTime.FromPercent(0)));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.28), flipEase));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(0.50), flipEase));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(0.06, KeyTime.FromPercent(0.78), flipEase));
+        flip.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, KeyTime.FromPercent(1.0), flipEase));
+        flip.Completed += (_, _) =>
+        {
+            ClearModalAnimations();
+            if (_metricFlipSource != null)
+                _metricFlipSource.Opacity = 1;
+            _metricFlipSource = null;
+            MetricDetailOverlay.Visibility = Visibility.Collapsed;
+            MetricDetailCompositionPanel.Children.Clear();
+            _metricDetailAnimating = false;
+        };
+
+        var skew = new DoubleAnimationUsingKeyFrames { Duration = FlipClose };
+        skew.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromPercent(0)));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(-2.2, KeyTime.FromPercent(0.28), flipEase));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(0.50), flipEase));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(2.2, KeyTime.FromPercent(0.78), flipEase));
+        skew.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(1.0), flipEase));
+
+        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, flip);
+        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, skew);
+
+        _metricFaceSwapTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(FlipClose.TimeSpan.TotalMilliseconds * 0.78)
+        };
+        _metricFaceSwapTimer.Tick += (_, _) =>
+        {
+            StopFaceSwapTimer();
+            MetricDetailBack.Visibility = Visibility.Collapsed;
+            MetricDetailFront.Visibility = Visibility.Visible;
+        };
+        _metricFaceSwapTimer.Start();
+    }
+
+    private void StopFaceSwapTimer()
+    {
+        if (_metricFaceSwapTimer == null) return;
+        _metricFaceSwapTimer.Stop();
+        _metricFaceSwapTimer = null;
+    }
+
+    private void ClearModalAnimations()
+    {
+        StopFaceSwapTimer();
+        MetricDetailModal.BeginAnimation(Canvas.LeftProperty, null);
+        MetricDetailModal.BeginAnimation(Canvas.TopProperty, null);
+        MetricDetailModal.BeginAnimation(FrameworkElement.WidthProperty, null);
+        MetricDetailModal.BeginAnimation(FrameworkElement.HeightProperty, null);
+        MetricDetailFlip.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        MetricDetailSkew.BeginAnimation(SkewTransform.AngleYProperty, null);
+        MetricDetailScrim.BeginAnimation(UIElement.OpacityProperty, null);
+    }
+
+    private void OnMetricDetailScrimClick(object sender, MouseButtonEventArgs e) => CloseMetricDetail();
+
+    private void OnCloseMetricDetailClick(object sender, RoutedEventArgs e) => CloseMetricDetail();
 
     /// <summary>
     /// Excel Growth rate: IFERROR(ABS(VarVsLy/LY)*IF(TY&gt;=LY,1,-1),"")

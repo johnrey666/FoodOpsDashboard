@@ -44,6 +44,34 @@ public sealed class TopExpenseRow
 }
 
 /// <summary>
+/// One contributing line in a KPI breakdown modal (Total OPEX / SBU EBITDA).
+/// </summary>
+public sealed class MetricBreakdownRow
+{
+    public required string Label { get; init; }
+    public double TY { get; init; }
+    public double TGT { get; init; }
+    public double LY { get; init; }
+    public double PctOfSales { get; init; }
+    public double GrowthPct => LY != 0 ? (TY - LY) / System.Math.Abs(LY) : 0;
+}
+
+/// <summary>
+/// Full breakdown payload for a clickable multi-account KPI.
+/// </summary>
+public sealed class MetricBreakdown
+{
+    public required string Title { get; init; }
+    public required string Formula { get; init; }
+    public double TY { get; init; }
+    public double TGT { get; init; }
+    public double LY { get; init; }
+    public double PctOfSales { get; init; }
+    public double GrowthPct => LY != 0 ? (TY - LY) / System.Math.Abs(LY) : 0;
+    public required IReadOnlyList<MetricBreakdownRow> Rows { get; init; }
+}
+
+/// <summary>
 /// One row of the "MONTHLY AVERAGE (full year)" table (rows 19-25 on DASHBOARD).
 /// </summary>
 public sealed class MonthlyAverageRow

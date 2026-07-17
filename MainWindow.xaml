@@ -7,6 +7,7 @@
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen">
 
+    <Grid>
     <DockPanel>
 
         <!-- Header with title + nav -->
@@ -246,4 +247,121 @@
 
         </Grid>
     </DockPanel>
+
+        <!-- KPI breakdown modal — flies + flips from the clicked card -->
+        <Grid x:Name="MetricDetailOverlay" Visibility="Collapsed" Panel.ZIndex="100">
+            <Border x:Name="MetricDetailScrim" Background="#8A0F172A" Opacity="0"
+                    MouseLeftButtonDown="OnMetricDetailScrimClick"/>
+            <Canvas x:Name="MetricDetailStage">
+                <Border x:Name="MetricDetailModal"
+                        Background="White" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="18" ClipToBounds="True"
+                        RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="MetricDetailFlip" ScaleX="1" ScaleY="1"/>
+                            <SkewTransform x:Name="MetricDetailSkew" AngleY="0"/>
+                        </TransformGroup>
+                    </Border.RenderTransform>
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="48" ShadowDepth="12" Opacity="0.26" Color="#0F172A"/>
+                    </Border.Effect>
+                    <Grid>
+                        <!-- Face A: looks like the KPI card -->
+                        <Border x:Name="MetricDetailFront" Background="White" Padding="16">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock x:Name="MetricDetailFrontTitle" FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="MetricDetailFrontAmount" FontSize="24"
+                                           FontWeight="Bold" Margin="0,8,0,0"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Face B: infographic breakdown -->
+                        <Border x:Name="MetricDetailBack" Visibility="Collapsed">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#FFFFFF" Offset="0"/>
+                                    <GradientStop Color="#F0F9FF" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <DockPanel Margin="22">
+                                <!-- Header -->
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                                    <Button DockPanel.Dock="Right" Content="✕" Padding="10,4"
+                                            VerticalAlignment="Top"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Click="OnCloseMetricDetailClick"/>
+                                    <StackPanel>
+                                        <TextBlock Text="BREAKDOWN" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="MetricDetailTitle" FontSize="22" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <Border Background="#E0F2FE" CornerRadius="8" Padding="10,6"
+                                                Margin="0,10,16,0" HorizontalAlignment="Left">
+                                            <TextBlock x:Name="MetricDetailFormula" FontSize="12"
+                                                       TextWrapping="Wrap" FontWeight="SemiBold"
+                                                       Foreground="#0369A1"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <!-- Snapshot tiles -->
+                                <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="0,0,0,16">
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="THIS YEAR" Style="{StaticResource MetricTileLabelStyle}"/>
+                                            <TextBlock x:Name="MetricDetailTy" Style="{StaticResource MetricTileValueStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="TARGET" Style="{StaticResource MetricTileLabelStyle}"/>
+                                            <TextBlock x:Name="MetricDetailTgt" Style="{StaticResource MetricTileValueStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="LAST YEAR" Style="{StaticResource MetricTileLabelStyle}"/>
+                                            <TextBlock x:Name="MetricDetailLy" Style="{StaticResource MetricTileValueStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                        <StackPanel>
+                                            <TextBlock Text="% OF SALES" Style="{StaticResource MetricTileLabelStyle}"/>
+                                            <TextBlock x:Name="MetricDetailPctSales" Style="{StaticResource MetricTileValueStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource MetricTileStyle}">
+                                        <StackPanel>
+                                            <TextBlock Text="GROWTH" Style="{StaticResource MetricTileLabelStyle}"/>
+                                            <TextBlock x:Name="MetricDetailGr" Style="{StaticResource MetricTileValueStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+
+                                <!-- Composition header -->
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <TextBlock Text="Composition" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock DockPanel.Dock="Right" x:Name="MetricDetailRowCount"
+                                               FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel x:Name="MetricDetailCompositionPanel"/>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Canvas>
+        </Grid>
+    </Grid>
 </Window>
