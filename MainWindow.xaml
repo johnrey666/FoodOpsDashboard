@@ -1,0 +1,249 @@
+<Window x:Class="FoodOpsDashboard.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LFR 2026 — Food Operations Dashboard"
+        Height="920" Width="1440" MinHeight="700" MinWidth="1100"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel>
+
+        <!-- Header with title + nav -->
+        <Border DockPanel.Dock="Top" Background="White" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1" Padding="24,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="28" Height="28" CornerRadius="7" Background="{StaticResource AccentBrush}" Margin="0,0,10,0">
+                        <TextBlock Text="L" Foreground="White" FontWeight="Bold" FontSize="13"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="LFR Food Ops" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="2026" FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center" Margin="8,0,16,0"/>
+
+                    <Border Background="#F1F5F9" CornerRadius="8" Padding="3" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="NavDashboard" Content="Dashboard" GroupName="MainNav"
+                                         Style="{StaticResource NavRadioStyle}" IsChecked="True"
+                                         Checked="OnNavChanged"/>
+                            <RadioButton x:Name="NavDataEntry" Content="Data Entry" GroupName="MainNav"
+                                         Style="{StaticResource NavRadioStyle}"
+                                         Checked="OnNavChanged"/>
+                            <RadioButton x:Name="NavStoreList" Content="Store List" GroupName="MainNav"
+                                         Style="{StaticResource NavRadioStyle}"
+                                         Checked="OnNavChanged"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="StatusText" Text="" Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"
+                               MaxWidth="280" TextTrimming="CharacterEllipsis"/>
+                    <Button x:Name="SaveAllButton" Content="Save" Style="{StaticResource GhostButtonStyle}"
+                            Click="OnSaveAllClick"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Margin="24,16,24,20">
+
+            <!-- ===================== DASHBOARD ===================== -->
+            <Grid x:Name="DashboardView">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Filters -->
+                <Border Grid.Row="0" Style="{StaticResource SurfaceStyle}" Padding="12,10" Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                            <TextBlock Text="Year" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="YearCombo" Style="{StaticResource ComboStyle}" Width="90"
+                                      SelectionChanged="OnFilterChanged" Margin="0,0,16,0"/>
+                            <TextBlock Text="Store" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="StoreCombo" Style="{StaticResource ComboStyle}" Width="180"
+                                      SelectionChanged="OnFilterChanged" Margin="0,0,16,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1">
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock Text="Months" Style="{StaticResource FieldLabelStyle}" Margin="0"
+                                           VerticalAlignment="Center"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="All" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
+                                            Click="OnSelectAllMonths" Margin="0,0,6,0"/>
+                                    <Button Content="Clear" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
+                                            Click="OnClearMonths"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <WrapPanel x:Name="MonthCheckPanel"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Key financial metrics — matches Computation Sheet set -->
+                <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                    <TextBlock Text="Key financial metrics" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="2,0,0,8"/>
+                    <UniformGrid x:Name="KpiPanel" Columns="7"/>
+                </StackPanel>
+
+                <!-- Chart + Top 5 expenses -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.25*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource SurfaceStyle}" Padding="14">
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                <TextBlock Text="Monthly sales trend" Style="{StaticResource SectionTitleStyle}" Margin="0"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Ellipse Width="7" Height="7" Fill="{StaticResource TySeriesBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="TY" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,10,0"/>
+                                    <Ellipse Width="7" Height="7" Fill="{StaticResource TgtSeriesBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="TGT" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,10,0"/>
+                                    <Ellipse Width="7" Height="7" Fill="{StaticResource LySeriesBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="LY" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <Canvas x:Name="TrendCanvas" Height="220" Background="Transparent"
+                                    SizeChanged="OnTrendCanvasSizeChanged"/>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource SurfaceStyle}" Padding="14">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="Top 5 operating expenses"
+                                       Style="{StaticResource SectionTitleStyle}"/>
+                            <DataGrid x:Name="ExpenseGrid" Style="{StaticResource AppDataGridStyle}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Disabled">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="EXPENSE" Binding="{Binding Expense}" Width="1.7*"/>
+                                    <DataGridTextColumn Header="TY" Binding="{Binding TY, StringFormat={}{0:#,##0}}" Width="*"/>
+                                    <DataGridTextColumn Header="% UTIL" Binding="{Binding UtilizationPct, StringFormat={}{0:0.0%}}" Width="0.85*"/>
+                                    <DataGridTextColumn Header="% OPEX" Binding="{Binding PctOfTotalOpex, StringFormat={}{0:0.0%}}" Width="0.8*"/>
+                                    <DataGridTextColumn Header="% SALES" Binding="{Binding PctOfTotalSales, StringFormat={}{0:0.0%}}" Width="0.8*"/>
+                                    <DataGridTextColumn Header="VS LY" Binding="{Binding GrowthPct, StringFormat={}{0:+0.0%;-0.0%}}" Width="0.8*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ===================== DATA ENTRY ===================== -->
+            <DockPanel x:Name="DataEntryView" Visibility="Collapsed">
+                <Border DockPanel.Dock="Top" Style="{StaticResource SurfaceStyle}" Padding="16,14" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Data table" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Style="{StaticResource HintStyle}" Margin="0,0,0,12"
+                                   Text="Enter TY and TGT for the selected year. LY is auto from last year’s TY. Use Export / Import xlsx to move a full year between devices."/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Year" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="DataYearCombo" Style="{StaticResource ComboStyle}" Width="100"
+                                      SelectionChanged="OnDataFilterChanged" Margin="0,0,16,0"/>
+                            <TextBlock Text="Month" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="DataMonthCombo" Style="{StaticResource ComboStyle}"
+                                      SelectionChanged="OnDataFilterChanged" Margin="0,0,16,0"/>
+                            <TextBlock Text="Store" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="DataStoreCombo" Style="{StaticResource ComboStyle}" Width="180"
+                                      SelectionChanged="OnDataFilterChanged" Margin="0,0,16,0"/>
+                            <Button Content="Save data" Style="{StaticResource PrimaryButtonStyle}"
+                                    Click="OnSaveAllClick" Margin="0,0,8,0"/>
+                            <Button Content="Export xlsx" Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnExportExcelClick" Margin="0,0,8,0"/>
+                            <Button Content="Import xlsx" Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnImportExcelClick" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="DataRowCountText" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SurfaceStyle}" Padding="8">
+                    <DataGrid x:Name="DataEntryGrid"
+                              Style="{StaticResource AppDataGridStyle}"
+                              AutoGenerateColumns="False"
+                              CanUserDeleteRows="False"
+                              EnableRowVirtualization="True"
+                              EnableColumnVirtualization="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              PreparingCellForEdit="OnDataEntryPreparingCellForEdit"
+                              CellEditEnding="OnDataEntryCellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Month" Binding="{Binding Month}" Width="70" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Store" Binding="{Binding Store}" Width="140" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Account" Binding="{Binding Account}" Width="2*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="TY" Binding="{Binding TY, UpdateSourceTrigger=LostFocus}" Width="*"/>
+                            <DataGridTextColumn Header="TGT" Binding="{Binding TGT, UpdateSourceTrigger=LostFocus}" Width="*"/>
+                            <DataGridTextColumn Header="LY (auto)" Binding="{Binding LY, StringFormat={}{0:#,##0.##}}" Width="*" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </DockPanel>
+
+            <!-- ===================== STORE LIST ===================== -->
+            <DockPanel x:Name="StoreListView" Visibility="Collapsed">
+                <Border DockPanel.Dock="Top" Style="{StaticResource SurfaceStyle}" Padding="16,14" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Store list" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Style="{StaticResource HintStyle}" Margin="0,0,0,12"
+                                   Text="Add a store to create blank DATA rows for every year × month × account."/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Name" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBox x:Name="NewStoreNameBox" Style="{StaticResource FieldBoxStyle}"
+                                     Width="180" Margin="0,0,12,0"/>
+                            <TextBlock Text="Group" Style="{StaticResource FieldLabelStyle}"/>
+                            <TextBox x:Name="NewStoreGroupBox" Style="{StaticResource FieldBoxStyle}"
+                                     Width="120" Margin="0,0,12,0"/>
+                            <Button Content="Add" Style="{StaticResource PrimaryButtonStyle}"
+                                    Click="OnAddStoreClick" Margin="0,0,8,0"/>
+                            <Button Content="Remove" Style="{StaticResource DangerButtonStyle}"
+                                    Click="OnRemoveStoreClick" Margin="0,0,8,0"/>
+                            <Button Content="Save" Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnSaveStoresClick"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SurfaceStyle}" Padding="8">
+                    <DataGrid x:Name="StoreGrid"
+                              Style="{StaticResource AppDataGridStyle}"
+                              AutoGenerateColumns="False"
+                              SelectionMode="Single"
+                              BeginningEdit="OnStoreBeginningEdit"
+                              CellEditEnding="OnStoreCellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Store Name" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                            <DataGridTextColumn Header="Group" Binding="{Binding Group, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </DockPanel>
+
+        </Grid>
+    </DockPanel>
+</Window>
