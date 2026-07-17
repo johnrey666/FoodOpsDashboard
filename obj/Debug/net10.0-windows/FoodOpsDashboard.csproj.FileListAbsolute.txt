@@ -44,3 +44,13 @@ C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.d
 C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.runtimeconfig.json
 C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.dll
 C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\flip-check5\FoodOpsDashboard.pdb
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-check\FoodOpsDashboard.exe
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-check\FoodOpsDashboard.deps.json
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-check\FoodOpsDashboard.runtimeconfig.json
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-check\FoodOpsDashboard.dll
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-check\FoodOpsDashboard.pdb
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-clean\FoodOpsDashboard.exe
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-clean\FoodOpsDashboard.deps.json
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-clean\FoodOpsDashboard.runtimeconfig.json
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-clean\FoodOpsDashboard.dll
+C:\Users\fo.technicalsupport\FoodOpsDashboard\bin\dash-clean\FoodOpsDashboard.pdb

@@ -22,8 +22,8 @@ public partial class MainWindow : Window
     private bool _metricDetailAnimating;
     private Rect _metricFlipOrigin;
     private FrameworkElement? _metricFlipSource;
-    private const double MetricModalWidth = 840;
-    private const double MetricModalHeight = 620;
+    private const double MetricModalWidth = 700;
+    private const double MetricModalHeight = 520;
     /// <summary>One half-turn (front→back) = land on detail face.</summary>
     private const double FlipOpenDegrees = 180;
     private static readonly Duration FlipTravel = new(TimeSpan.FromMilliseconds(1600));
@@ -80,13 +80,15 @@ public partial class MainWindow : Window
             }
         };
 
+        Closing += OnWindowClosing;
+
         ShowView("dashboard");
         RefreshDashboard();
         RefreshDataGrid();
-        SetStatus("Ready — select one or more months to consolidate");
+        SetStatus("Ready — edits auto-save");
     }
 
-    // ===================== NAV / SAVE =====================
+    // ===================== NAV / AUTO-SAVE =====================
 
     private void OnNavChanged(object sender, RoutedEventArgs e)
     {
@@ -98,6 +100,8 @@ public partial class MainWindow : Window
 
     private void ShowView(string which)
     {
+        CommitGrids();
+
         DashboardView.Visibility = which == "dashboard" ? Visibility.Visible : Visibility.Collapsed;
         DataEntryView.Visibility = which == "data" ? Visibility.Visible : Visibility.Collapsed;
         StoreListView.Visibility = which == "stores" ? Visibility.Visible : Visibility.Collapsed;
@@ -116,26 +120,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnSaveAllClick(object sender, RoutedEventArgs e)
+    private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         CommitGrids();
         _repo.Save();
-        RefreshYearDropdowns();
-        RefreshStoreDropdowns();
-        RefreshDashboard();
-        RefreshDataGrid();
-        SetStatus($"Saved {DateTime.Now:HH:mm:ss} — {_repo.Records.Count:N0} rows, {_repo.Stores.Count} stores");
     }
 
-    private void OnSaveStoresClick(object sender, RoutedEventArgs e)
+    private void AutoSave(string? status = null)
     {
-        CommitGrids();
-        foreach (var year in _repo.GetAvailableYears())
-            _repo.EnsureCompleteGrid(year);
         _repo.Save();
-        RefreshStoreDropdowns();
-        RefreshDataStoreFilter();
-        SetStatus($"Stores saved {DateTime.Now:HH:mm:ss}");
+        SetStatus(status ?? $"Auto-saved {DateTime.Now:HH:mm:ss}");
     }
 
     private void CommitGrids()
@@ -450,9 +444,9 @@ public partial class MainWindow : Window
                 Background = Brushes.White,
                 BorderBrush = (Brush)Application.Current.Resources["BorderBrush"],
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(14, 12, 14, 12),
-                Margin = new Thickness(0, 0, 0, 8)
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 0, 0, 6)
             };
 
             var grid = new Grid();
@@ -461,12 +455,12 @@ public partial class MainWindow : Window
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
 
             // Left: label + share bar
-            var left = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
-            var labelRow = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+            var left = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
+            var labelRow = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
             labelRow.Children.Add(new TextBlock
             {
                 Text = share.ToString("0.0%", CultureInfo.InvariantCulture),
-                FontSize = 11,
+                FontSize = 10,
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(accent),
                 HorizontalAlignment = HorizontalAlignment.Right,
@@ -476,7 +470,7 @@ public partial class MainWindow : Window
             labelRow.Children.Add(new TextBlock
             {
                 Text = row.Label,
-                FontSize = 12,
+                FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = (Brush)Application.Current.Resources["TextPrimaryBrush"],
                 TextTrimming = TextTrimming.CharacterEllipsis,
@@ -486,15 +480,15 @@ public partial class MainWindow : Window
 
             var track = new Border
             {
-                Height = 8,
-                CornerRadius = new CornerRadius(4),
+                Height = 6,
+                CornerRadius = new CornerRadius(3),
                 Background = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)),
                 ClipToBounds = true
             };
             var fill = new Border
             {
-                Height = 8,
-                CornerRadius = new CornerRadius(4),
+                Height = 6,
+                CornerRadius = new CornerRadius(3),
                 Background = new SolidColorBrush(accent),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Width = 0
@@ -511,7 +505,7 @@ public partial class MainWindow : Window
             grid.Children.Add(left);
 
             // Middle: TY / TGT / LY
-            var mid = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            var mid = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
             mid.Children.Add(MetricMiniStat("TY", FormatPeso(row.TY)));
             mid.Children.Add(MetricMiniStat("TGT", FormatPeso(row.TGT), muted: true));
             mid.Children.Add(MetricMiniStat("LY", FormatPeso(row.LY), muted: true));
@@ -523,10 +517,10 @@ public partial class MainWindow : Window
             right.Children.Add(new TextBlock
             {
                 Text = row.PctOfSales.ToString("0.0%", CultureInfo.InvariantCulture) + " of sales",
-                FontSize = 11,
+                FontSize = 10,
                 Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
                 HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 0, 0, 6)
+                Margin = new Thickness(0, 0, 0, 4)
             });
             bool up = row.GrowthPct >= 0;
             right.Children.Add(new Border
@@ -534,13 +528,13 @@ public partial class MainWindow : Window
                 Background = up
                     ? new SolidColorBrush(Color.FromRgb(0xEC, 0xFD, 0xF5))
                     : new SolidColorBrush(Color.FromRgb(0xFF, 0xF1, 0xF2)),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(8, 4, 8, 4),
+                CornerRadius = new CornerRadius(5),
+                Padding = new Thickness(6, 3, 6, 3),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Child = new TextBlock
                 {
                     Text = $"GR {(up ? "▲" : "▼")} {row.GrowthPct:+0.0%;-0.0%}",
-                    FontSize = 11,
+                    FontSize = 10,
                     FontWeight = FontWeights.Bold,
                     Foreground = (Brush)Application.Current.Resources[up ? "PositiveBrush" : "NegativeBrush"]
                 }
@@ -564,16 +558,16 @@ public partial class MainWindow : Window
                 new TextBlock
                 {
                     Text = label,
-                    FontSize = 9,
+                    FontSize = 8,
                     FontWeight = FontWeights.Bold,
-                    Width = 28,
+                    Width = 26,
                     Foreground = (Brush)Application.Current.Resources["TextMutedBrush"],
                     VerticalAlignment = VerticalAlignment.Center
                 },
                 new TextBlock
                 {
                     Text = value,
-                    FontSize = 11,
+                    FontSize = 10,
                     FontWeight = muted ? FontWeights.Medium : FontWeights.SemiBold,
                     Foreground = (Brush)Application.Current.Resources[muted ? "TextMutedBrush" : "TextPrimaryBrush"],
                     VerticalAlignment = VerticalAlignment.Center
@@ -886,15 +880,17 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(text) || text is "-" or "." or "-.")
         {
             box.Text = "0";
-            return;
         }
-
-        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _)
+        else if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _)
             && !double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out _))
         {
             e.Cancel = true;
             MessageBox.Show("Please enter a valid number.", "Data Entry", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
+
+        // Binding commits after CellEditEnding returns — save on the next dispatcher pass.
+        Dispatcher.BeginInvoke(() => AutoSave());
     }
 
     private void OnExportExcelClick(object sender, RoutedEventArgs e)
@@ -958,7 +954,7 @@ public partial class MainWindow : Window
         {
             CommitGrids();
             var (year, updated, addedStores) = ExcelExchange.Import(dlg.FileName, _repo);
-            _repo.Save();
+            AutoSave($"Imported {System.IO.Path.GetFileName(dlg.FileName)} — {updated} cells updated");
 
             RefreshYearDropdowns();
             DataYearCombo.SelectedItem = year;
@@ -967,7 +963,6 @@ public partial class MainWindow : Window
             RefreshDataGrid();
             RefreshDashboard();
 
-            SetStatus($"Imported {System.IO.Path.GetFileName(dlg.FileName)} — {updated} cells updated");
             MessageBox.Show(
                 $"Import complete for year {year}.\nRows updated: {updated}\nStores added: {addedStores}",
                 "Import complete",
@@ -990,13 +985,12 @@ public partial class MainWindow : Window
             var group = NewStoreGroupBox.Text.Trim();
             var years = _repo.GetYearChoices();
             _repo.AddStore(name, group, years);
-            _repo.Save();
+            AutoSave($"Added store '{name}'");
             NewStoreNameBox.Clear();
             NewStoreGroupBox.Clear();
             RefreshStoreDropdowns();
             RefreshDataStoreFilter();
             RefreshDataGrid();
-            SetStatus($"Added store '{name}'");
         }
         catch (Exception ex)
         {
@@ -1020,12 +1014,12 @@ public partial class MainWindow : Window
 
         if (confirm != MessageBoxResult.Yes) return;
 
+        var removedName = store.Name;
         _repo.RemoveStore(store);
-        _repo.Save();
+        AutoSave($"Removed store '{removedName}'");
         RefreshStoreDropdowns();
         RefreshDataStoreFilter();
         RefreshDataGrid();
-        SetStatus($"Removed store '{store.Name}'");
     }
 
     private void OnStoreBeginningEdit(object sender, DataGridBeginningEditEventArgs e)
@@ -1038,13 +1032,25 @@ public partial class MainWindow : Window
     {
         if (e.EditAction != DataGridEditAction.Commit) return;
         if (e.Row.Item is not StoreInfo store) return;
-        if (e.Column.Header?.ToString() != "Store Name") return;
+
+        var header = e.Column.Header?.ToString();
+        if (header == "Group")
+        {
+            Dispatcher.BeginInvoke(() => AutoSave($"Store group updated · {DateTime.Now:HH:mm:ss}"));
+            return;
+        }
+
+        if (header != "Store Name") return;
 
         Dispatcher.BeginInvoke(() =>
         {
             var oldName = _storeNameBeforeEdit;
             _storeNameBeforeEdit = null;
-            if (oldName == null || oldName == store.Name) return;
+            if (oldName == null || oldName == store.Name)
+            {
+                AutoSave();
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(store.Name))
             {
@@ -1063,6 +1069,7 @@ public partial class MainWindow : Window
             }
 
             _repo.RenameStoreKey(oldName, store.Name);
+            AutoSave($"Renamed store · {DateTime.Now:HH:mm:ss}");
             RefreshStoreDropdowns();
             RefreshDataStoreFilter();
             RefreshDataGrid();

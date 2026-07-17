@@ -70,7 +70,7 @@ dotnet run
 
 ## Data storage
 
-- Day-to-day: use **Data Entry** and **Store List**, then **Save**.
+- Day-to-day: use **Data Entry** and **Store List** — edits auto-save (no Save button).
 - **Export xlsx** / **Import xlsx** on Data Entry: share a full year (DATA + Stores sheets) between PCs.
 - To wipe local edits and re-seed from the embedded Excel export, delete the
   folder `%LocalAppData%\FoodOpsDashboard\` and restart the app.

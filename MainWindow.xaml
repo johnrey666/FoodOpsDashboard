@@ -45,13 +45,11 @@
                     </Border>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="StatusText" Text="" Foreground="{StaticResource TextMutedBrush}"
-                               FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"
-                               MaxWidth="280" TextTrimming="CharacterEllipsis"/>
-                    <Button x:Name="SaveAllButton" Content="Save" Style="{StaticResource GhostButtonStyle}"
-                            Click="OnSaveAllClick"/>
-                </StackPanel>
+                <TextBlock x:Name="StatusText" Grid.Column="2" Text=""
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="11" VerticalAlignment="Center"
+                           MaxWidth="360" TextTrimming="CharacterEllipsis"
+                           HorizontalAlignment="Right"/>
             </Grid>
         </Border>
 
@@ -67,35 +65,30 @@
 
                 <!-- Filters -->
                 <Border Grid.Row="0" Style="{StaticResource SurfaceStyle}" Padding="12,10" Margin="0,0,0,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock Text="Year" Style="{StaticResource FieldLabelStyle}"/>
                             <ComboBox x:Name="YearCombo" Style="{StaticResource ComboStyle}" Width="90"
-                                      SelectionChanged="OnFilterChanged" Margin="0,0,16,0"/>
+                                      SelectionChanged="OnFilterChanged" Margin="0,0,16,0"
+                                      VerticalAlignment="Center"/>
                             <TextBlock Text="Store" Style="{StaticResource FieldLabelStyle}"/>
                             <ComboBox x:Name="StoreCombo" Style="{StaticResource ComboStyle}" Width="180"
-                                      SelectionChanged="OnFilterChanged" Margin="0,0,16,0"/>
+                                      SelectionChanged="OnFilterChanged"
+                                      VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1">
-                            <DockPanel Margin="0,0,0,8">
-                                <TextBlock Text="Months" Style="{StaticResource FieldLabelStyle}" Margin="0"
-                                           VerticalAlignment="Center"/>
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="All" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
-                                            Click="OnSelectAllMonths" Margin="0,0,6,0"/>
-                                    <Button Content="Clear" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
-                                            Click="OnClearMonths"/>
-                                </StackPanel>
-                            </DockPanel>
-                            <WrapPanel x:Name="MonthCheckPanel"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Months" Style="{StaticResource FieldLabelStyle}"
+                                       VerticalAlignment="Center"/>
+                            <WrapPanel x:Name="MonthCheckPanel" VerticalAlignment="Center"/>
+                            <Button Content="All" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
+                                    Click="OnSelectAllMonths" Margin="6,0,6,0"
+                                    VerticalAlignment="Center"/>
+                            <Button Content="Clear" Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"
+                                    Click="OnClearMonths"
+                                    VerticalAlignment="Center"/>
                         </StackPanel>
-                    </Grid>
+                    </WrapPanel>
                 </Border>
 
                 <!-- Key financial metrics — matches Computation Sheet set -->
@@ -171,8 +164,6 @@
                             <TextBlock Text="Store" Style="{StaticResource FieldLabelStyle}"/>
                             <ComboBox x:Name="DataStoreCombo" Style="{StaticResource ComboStyle}" Width="180"
                                       SelectionChanged="OnDataFilterChanged" Margin="0,0,16,0"/>
-                            <Button Content="Save data" Style="{StaticResource PrimaryButtonStyle}"
-                                    Click="OnSaveAllClick" Margin="0,0,8,0"/>
                             <Button Content="Export xlsx" Style="{StaticResource SecondaryButtonStyle}"
                                     Click="OnExportExcelClick" Margin="0,0,8,0"/>
                             <Button Content="Import xlsx" Style="{StaticResource SecondaryButtonStyle}"
@@ -223,9 +214,7 @@
                             <Button Content="Add" Style="{StaticResource PrimaryButtonStyle}"
                                     Click="OnAddStoreClick" Margin="0,0,8,0"/>
                             <Button Content="Remove" Style="{StaticResource DangerButtonStyle}"
-                                    Click="OnRemoveStoreClick" Margin="0,0,8,0"/>
-                            <Button Content="Save" Style="{StaticResource SecondaryButtonStyle}"
-                                    Click="OnSaveStoresClick"/>
+                                    Click="OnRemoveStoreClick"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -255,7 +244,7 @@
             <Canvas x:Name="MetricDetailStage">
                 <Border x:Name="MetricDetailModal"
                         Background="White" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="18" ClipToBounds="True"
+                        BorderThickness="1" CornerRadius="14" ClipToBounds="True"
                         RenderTransformOrigin="0.5,0.5">
                     <Border.RenderTransform>
                         <TransformGroup>
@@ -267,17 +256,17 @@
                         </TransformGroup>
                     </Border.RenderTransform>
                     <Border.Effect>
-                        <DropShadowEffect BlurRadius="48" ShadowDepth="12" Opacity="0.26" Color="#0F172A"/>
+                        <DropShadowEffect BlurRadius="32" ShadowDepth="8" Opacity="0.22" Color="#0F172A"/>
                     </Border.Effect>
                     <Grid>
                         <!-- Face A: looks like the KPI card -->
-                        <Border x:Name="MetricDetailFront" Background="White" Padding="16">
+                        <Border x:Name="MetricDetailFront" Background="White" Padding="12">
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock x:Name="MetricDetailFrontTitle" FontSize="12"
+                                <TextBlock x:Name="MetricDetailFrontTitle" FontSize="11"
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource TextMutedBrush}"/>
-                                <TextBlock x:Name="MetricDetailFrontAmount" FontSize="24"
-                                           FontWeight="Bold" Margin="0,8,0,0"
+                                <TextBlock x:Name="MetricDetailFrontAmount" FontSize="20"
+                                           FontWeight="Bold" Margin="0,6,0,0"
                                            Foreground="{StaticResource TextPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
@@ -290,22 +279,22 @@
                                     <GradientStop Color="#F0F9FF" Offset="1"/>
                                 </LinearGradientBrush>
                             </Border.Background>
-                            <DockPanel Margin="22">
+                            <DockPanel Margin="16">
                                 <!-- Header -->
-                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
-                                    <Button DockPanel.Dock="Right" Content="✕" Padding="10,4"
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                                    <Button DockPanel.Dock="Right" Content="✕" Padding="8,2"
                                             VerticalAlignment="Top"
                                             Style="{StaticResource SecondaryButtonStyle}"
                                             Click="OnCloseMetricDetailClick"/>
                                     <StackPanel>
-                                        <TextBlock Text="BREAKDOWN" FontSize="10" FontWeight="Bold"
+                                        <TextBlock Text="BREAKDOWN" FontSize="9" FontWeight="Bold"
                                                    Foreground="{StaticResource AccentBrush}"
-                                                   Margin="0,0,0,4"/>
-                                        <TextBlock x:Name="MetricDetailTitle" FontSize="22" FontWeight="Bold"
+                                                   Margin="0,0,0,3"/>
+                                        <TextBlock x:Name="MetricDetailTitle" FontSize="18" FontWeight="Bold"
                                                    Foreground="{StaticResource TextPrimaryBrush}"/>
-                                        <Border Background="#E0F2FE" CornerRadius="8" Padding="10,6"
-                                                Margin="0,10,16,0" HorizontalAlignment="Left">
-                                            <TextBlock x:Name="MetricDetailFormula" FontSize="12"
+                                        <Border Background="#E0F2FE" CornerRadius="6" Padding="8,4"
+                                                Margin="0,8,12,0" HorizontalAlignment="Left">
+                                            <TextBlock x:Name="MetricDetailFormula" FontSize="11"
                                                        TextWrapping="Wrap" FontWeight="SemiBold"
                                                        Foreground="#0369A1"/>
                                         </Border>
@@ -313,26 +302,26 @@
                                 </DockPanel>
 
                                 <!-- Snapshot tiles -->
-                                <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="0,0,0,16">
-                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                <UniformGrid DockPanel.Dock="Top" Columns="5" Margin="0,0,0,12">
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,6,0">
                                         <StackPanel>
                                             <TextBlock Text="THIS YEAR" Style="{StaticResource MetricTileLabelStyle}"/>
                                             <TextBlock x:Name="MetricDetailTy" Style="{StaticResource MetricTileValueStyle}"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,6,0">
                                         <StackPanel>
                                             <TextBlock Text="TARGET" Style="{StaticResource MetricTileLabelStyle}"/>
                                             <TextBlock x:Name="MetricDetailTgt" Style="{StaticResource MetricTileValueStyle}"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,6,0">
                                         <StackPanel>
                                             <TextBlock Text="LAST YEAR" Style="{StaticResource MetricTileLabelStyle}"/>
                                             <TextBlock x:Name="MetricDetailLy" Style="{StaticResource MetricTileValueStyle}"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,8,0">
+                                    <Border Style="{StaticResource MetricTileStyle}" Margin="0,0,6,0">
                                         <StackPanel>
                                             <TextBlock Text="% OF SALES" Style="{StaticResource MetricTileLabelStyle}"/>
                                             <TextBlock x:Name="MetricDetailPctSales" Style="{StaticResource MetricTileValueStyle}"/>
@@ -347,12 +336,12 @@
                                 </UniformGrid>
 
                                 <!-- Composition header -->
-                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                                    <TextBlock Text="Composition" FontSize="14" FontWeight="SemiBold"
+                                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <TextBlock Text="Composition" FontSize="13" FontWeight="SemiBold"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                VerticalAlignment="Center"/>
                                     <TextBlock DockPanel.Dock="Right" x:Name="MetricDetailRowCount"
-                                               FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="10" Foreground="{StaticResource TextMutedBrush}"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </DockPanel>
 
