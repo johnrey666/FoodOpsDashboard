@@ -10,10 +10,10 @@ public sealed class DashboardCalculator
 {
     private readonly DataRepository _repo;
 
-    /// <summary>Expense accounts eligible for the Top 5 ranking (excludes Sales / COGS / HO).</summary>
+    /// <summary>Expense accounts eligible for the Top 5 ranking.</summary>
     private static readonly HashSet<string> ExpenseAccountSet =
         DataRepository.Accounts
-            .Where(a => a is not ("Sales" or "Cost of Sales" or "HO"))
+            .Where(a => !AccountCatalog.TopExpenseExclusions.Contains(a))
             .ToHashSet(StringComparer.Ordinal);
 
     public DashboardCalculator(DataRepository repo) => _repo = repo;
@@ -44,17 +44,23 @@ public sealed class DashboardCalculator
 
         double sales = Sum(r => r.Account == "Sales");
         double costOfSales = Sum(r => r.Account == "Cost of Sales");
-        double grossProfit = sales - costOfSales;
+        double miscIncome = Sum(r => r.Account == "Miscellaneous Income");
+        double grossProfit = sales - costOfSales + miscIncome;
 
-        double opexExSalesCogsHo = Sum(r => r.Account != "Sales" && r.Account != "Cost of Sales" && r.Account != "HO");
-        double sbuCm = grossProfit - opexExSalesCogsHo;
+        double storeOpex = Sum(r => AccountCatalog.IsStoreOperatingExpense(r.Account));
+        double ho = Sum(r => r.Account == "HO");
+        double corpEo = Sum(r => r.Account == "Corp & EO Share");
+        double interest = Sum(r => r.Account == "Interest Expense");
+        double goc = Sum(r => r.Account == "GOC Expenses");
+        double sbuCm = grossProfit - storeOpex - ho;
 
         double depreciation = Sum(r => r.Account == "Depreciation");
         double amortization = Sum(r => r.Account == "Amortization");
-        double sbuEbitda = sbuCm + depreciation + amortization;
+        double hoDa = Sum(r => r.Account == "HO DA");
+        double sbuEbitda = sbuCm + depreciation + amortization + hoDa;
 
-        double totalOpex = Sum(r => r.Account != "Sales" && r.Account != "Cost of Sales");
-        double netIncome = grossProfit - totalOpex;
+        double totalOpex = storeOpex;
+        double netIncome = sbuCm - corpEo - interest - goc;
 
         return new MetricSet
         {
@@ -138,13 +144,13 @@ public sealed class DashboardCalculator
     }
 
     /// <summary>
-    /// Total OPEX = every account except Sales and Cost of Sales (includes HO).
+    /// Total OPEX = store-level operating expenses (TOTAL STORE OPERATING EXPENSES in MPT).
     /// </summary>
     public MetricBreakdown ComputeTotalOpexBreakdown(int year, IReadOnlyCollection<string> months, string storeChoice)
     {
         var kpis = ComputeKpis(year, months, storeChoice);
         var accounts = DataRepository.Accounts
-            .Where(a => a is not ("Sales" or "Cost of Sales"))
+            .Where(AccountCatalog.IsStoreOperatingExpense)
             .ToArray();
 
         var rows = SumAccounts(year, months, storeChoice, accounts, kpis.TY.Sales)
@@ -154,7 +160,7 @@ public sealed class DashboardCalculator
         return new MetricBreakdown
         {
             Title = "Total OPEX",
-            Formula = "Sum of all accounts except Sales and Cost of Sales (includes HO).",
+            Formula = "Sum of store operating expense accounts (MPT: TOTAL STORE OPERATING EXPENSES). Excludes HO and below-the-line items.",
             TY = kpis.TY.TotalOpex,
             TGT = kpis.TGT.TotalOpex,
             LY = kpis.LY.TotalOpex,
@@ -164,7 +170,7 @@ public sealed class DashboardCalculator
     }
 
     /// <summary>
-    /// SBU EBITDA = SBU CM + Depreciation + Amortization.
+    /// SBU EBITDA = SBU CM + Depreciation + Amortization + HO DA.
     /// </summary>
     public MetricBreakdown ComputeSbuEbitdaBreakdown(int year, IReadOnlyCollection<string> months, string storeChoice)
     {
@@ -187,6 +193,9 @@ public sealed class DashboardCalculator
         var amortTy = SumAccount(year, "Amortization", r => r.TY);
         var amortTgt = SumAccount(year, "Amortization", r => r.TGT);
         var amortLy = SumAccount(year - 1, "Amortization", r => r.TY);
+        var hoDaTy = SumAccount(year, "HO DA", r => r.TY);
+        var hoDaTgt = SumAccount(year, "HO DA", r => r.TGT);
+        var hoDaLy = SumAccount(year - 1, "HO DA", r => r.TY);
 
         var rows = new List<MetricBreakdownRow>
         {
@@ -213,13 +222,21 @@ public sealed class DashboardCalculator
                 TGT = amortTgt,
                 LY = amortLy,
                 PctOfSales = salesTy != 0 ? amortTy / salesTy : 0
+            },
+            new()
+            {
+                Label = "HO DA",
+                TY = hoDaTy,
+                TGT = hoDaTgt,
+                LY = hoDaLy,
+                PctOfSales = salesTy != 0 ? hoDaTy / salesTy : 0
             }
         };
 
         return new MetricBreakdown
         {
             Title = "SBU EBITDA",
-            Formula = "SBU CM + Depreciation + Amortization.",
+            Formula = "SBU CM + Depreciation + Amortization + HO DA.",
             TY = kpis.TY.SbuEbitda,
             TGT = kpis.TGT.SbuEbitda,
             LY = kpis.LY.SbuEbitda,

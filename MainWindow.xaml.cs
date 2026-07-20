@@ -73,7 +73,13 @@ public partial class MainWindow : Window
 
         PreviewKeyDown += (_, e) =>
         {
-            if (e.Key == Key.Escape && MetricDetailOverlay.Visibility == Visibility.Visible)
+            if (e.Key != Key.Escape) return;
+            if (HowToUseOverlay.Visibility == Visibility.Visible)
+            {
+                CloseHowToUse();
+                e.Handled = true;
+            }
+            else if (MetricDetailOverlay.Visibility == Visibility.Visible)
             {
                 CloseMetricDetail();
                 e.Handled = true;
@@ -141,6 +147,20 @@ public partial class MainWindow : Window
     }
 
     private void SetStatus(string text) => StatusText.Text = text;
+
+    // ===================== HOW TO USE =====================
+
+    private void OnHowToUseClick(object sender, MouseButtonEventArgs e)
+    {
+        HowToUseOverlay.Visibility = Visibility.Visible;
+        e.Handled = true;
+    }
+
+    private void CloseHowToUse() => HowToUseOverlay.Visibility = Visibility.Collapsed;
+
+    private void OnHowToUseScrimClick(object sender, MouseButtonEventArgs e) => CloseHowToUse();
+
+    private void OnCloseHowToUseClick(object sender, RoutedEventArgs e) => CloseHowToUse();
 
     // ===================== DASHBOARD =====================
 
@@ -327,7 +347,7 @@ public partial class MainWindow : Window
             Margin = new Thickness(0, 8, 0, 0)
         };
         variances.Children.Add(VarianceBadge("vs TGT", ty - tgt, tgt));
-        variances.Children.Add(new Border { Width = 6 });
+        variances.Children.Add(new Border { Width = 4 });
         variances.Children.Add(VarianceBadge("vs LY", ty - ly, ly));
         stack.Children.Add(variances);
 
@@ -778,11 +798,11 @@ public partial class MainWindow : Window
             Background = positive
                 ? new SolidColorBrush(Color.FromRgb(0xEC, 0xFD, 0xF5))
                 : new SolidColorBrush(Color.FromRgb(0xFF, 0xF1, 0xF2)),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(7, 3, 7, 3),
+            CornerRadius = new CornerRadius(5),
+            Padding = new Thickness(5, 2, 5, 2),
             Child = new TextBlock
             {
-                FontSize = 10,
+                FontSize = 8.5,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = fg,
                 Text = $"{label} {pct:+0.0%;-0.0%}"
@@ -972,6 +992,34 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Import failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OnResetDataClick(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            "This will set all TY and TGT values to zero across every year, month, store, and account.\n\nThis cannot be undone. Continue?",
+            "Reset all data",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            CommitGrids();
+            var cleared = _repo.ClearAllData();
+            RefreshDataGrid();
+            RefreshDashboard();
+            AutoSave($"Reset complete — {cleared} rows cleared");
+            MessageBox.Show(
+                $"All data has been reset.\nRows cleared: {cleared}",
+                "Reset complete",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Reset failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

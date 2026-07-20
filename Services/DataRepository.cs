@@ -25,47 +25,7 @@ public sealed class DataRepository
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     };
 
-    public static readonly string[] Accounts =
-    {
-        "Sales",
-        "Cost of Sales",
-        "Salaries & Wages",
-        "Officers Salaries",
-        "Agency Services",
-        "Security Services",
-        "Directors Fees",
-        "Delivery/Packaging/Handling",
-        "Other Employee Fringe Benefits",
-        "Breakage Allowance",
-        "Transportation & Meals",
-        "Customer Incentives",
-        "Supplies & Materials Used",
-        "Communications",
-        "Electricity & Water Bills",
-        "Rentals",
-        "Gasoline/Fuel & Oil Used",
-        "Leasing Expenses",
-        "Marketing & Advertising",
-        "Corporate Special Programs",
-        "Insurance Expenses",
-        "Taxes & Licenses",
-        "Chattel Mortgage Fee",
-        "Repairs & Maintenance",
-        "Representation",
-        "Donations & Contributions",
-        "Bad Debts Expense",
-        "Legal & Other Fees",
-        "Professional Fees",
-        "Commission Expenses",
-        "Business Research & Dev",
-        "Dues & Subscription",
-        "Depreciation",
-        "Amortization",
-        "Royalties",
-        "Other Expenses",
-        "Miscellaneous",
-        "HO"
-    };
+    public static readonly string[] Accounts = AccountCatalog.Accounts;
 
     public static readonly string[] TopExpenseAccounts =
     {
@@ -79,6 +39,14 @@ public sealed class DataRepository
         "Supplies & Materials Used",
         "Repairs & Maintenance",
         "Other Employee Fringe Benefits"
+    };
+
+    private static readonly (string Old, string New)[] AccountRenames =
+    {
+        ("Officers Salaries", "Officers' Salaries"),
+        ("Directors Fees", "Directors' Fees/Per Diem"),
+        ("Marketing & Advertising", "Marketing, Advertising & Promo"),
+        ("Business Research & Dev", "Business Research & Dev. Expense")
     };
 
     public DataRepository()
@@ -103,6 +71,44 @@ public sealed class DataRepository
 
         foreach (var year in GetAvailableYears())
             EnsureCompleteGrid(year);
+
+        MigrateLegacyAccountNames();
+    }
+
+    private void MigrateLegacyAccountNames()
+    {
+        bool changed = false;
+        foreach (var (oldName, newName) in AccountRenames)
+        {
+            foreach (var rec in Records.Where(r => r.Account == oldName).ToList())
+            {
+                var dup = Records.FirstOrDefault(r =>
+                    r.Year == rec.Year && r.Month == rec.Month && r.Store == rec.Store && r.Account == newName);
+                if (dup is null)
+                {
+                    Records.Remove(rec);
+                    Records.Add(new DataRecord
+                    {
+                        Year = rec.Year,
+                        Month = rec.Month,
+                        Store = rec.Store,
+                        Account = newName,
+                        TY = rec.TY,
+                        TGT = rec.TGT
+                    });
+                    changed = true;
+                }
+                else
+                {
+                    dup.TY += rec.TY;
+                    dup.TGT += rec.TGT;
+                    Records.Remove(rec);
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) Save();
     }
 
     public IReadOnlyList<int> GetAvailableYears()
@@ -133,6 +139,22 @@ public sealed class DataRepository
     }
 
     public void Save() => LocalDataStore.Save(Stores, Records);
+
+    /// <summary>Clears all TY and TGT values across every year, month, store, and account.</summary>
+    public int ClearAllData()
+    {
+        int cleared = 0;
+        foreach (var record in Records)
+        {
+            if (record.TY == 0 && record.TGT == 0) continue;
+            record.TY = 0;
+            record.TGT = 0;
+            cleared++;
+        }
+
+        Save();
+        return cleared;
+    }
 
     public double GetPriorYearTy(int year, string month, string store, string account) =>
         Records.Where(r => r.Year == year - 1 && r.Month == month && r.Store == store && r.Account == account)

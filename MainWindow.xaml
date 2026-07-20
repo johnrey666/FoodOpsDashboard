@@ -45,11 +45,21 @@
                     </Border>
                 </StackPanel>
 
-                <TextBlock x:Name="StatusText" Grid.Column="2" Text=""
-                           Foreground="{StaticResource TextMutedBrush}"
-                           FontSize="11" VerticalAlignment="Center"
-                           MaxWidth="360" TextTrimming="CharacterEllipsis"
-                           HorizontalAlignment="Right"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                            HorizontalAlignment="Right">
+                    <TextBlock x:Name="StatusText" Text=""
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11" VerticalAlignment="Center"
+                               MaxWidth="320" TextTrimming="CharacterEllipsis"
+                               Margin="0,0,14,0"/>
+                    <TextBlock Text="How to Use"
+                               Foreground="{StaticResource AccentBrush}"
+                               FontSize="12" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Cursor="Hand"
+                               TextDecorations="Underline"
+                               MouseLeftButtonUp="OnHowToUseClick"
+                               ToolTip="Open the user guide"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -153,7 +163,7 @@
                         <TextBlock Text="Data table" FontSize="15" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
                         <TextBlock Style="{StaticResource HintStyle}" Margin="0,0,0,12"
-                                   Text="Enter TY and TGT for the selected year. LY is auto from last year’s TY. Use Export / Import xlsx to move a full year between devices."/>
+                                   Text="Enter TY and TGT for the selected year. LY is auto from last year’s TY. Export / Import supports DATA xlsx or FO MPT workbooks (group sheets with month columns)."/>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Year" Style="{StaticResource FieldLabelStyle}"/>
                             <ComboBox x:Name="DataYearCombo" Style="{StaticResource ComboStyle}" Width="100"
@@ -167,7 +177,9 @@
                             <Button Content="Export xlsx" Style="{StaticResource SecondaryButtonStyle}"
                                     Click="OnExportExcelClick" Margin="0,0,8,0"/>
                             <Button Content="Import xlsx" Style="{StaticResource SecondaryButtonStyle}"
-                                    Click="OnImportExcelClick" Margin="0,0,12,0"/>
+                                    Click="OnImportExcelClick" Margin="0,0,8,0"/>
+                            <Button Content="Reset" Style="{StaticResource DangerButtonStyle}"
+                                    Click="OnResetDataClick" Margin="0,0,12,0"/>
                             <TextBlock x:Name="DataRowCountText" VerticalAlignment="Center"
                                        Foreground="{StaticResource TextMutedBrush}" FontSize="12"/>
                         </StackPanel>
@@ -354,6 +366,324 @@
                     </Grid>
                 </Border>
             </Canvas>
+        </Grid>
+
+        <!-- How to Use — user guide modal -->
+        <Grid x:Name="HowToUseOverlay" Visibility="Collapsed" Panel.ZIndex="110">
+            <Border Background="#8A0F172A" MouseLeftButtonDown="OnHowToUseScrimClick"/>
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Width="740" MaxHeight="680" Margin="24"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="14" ClipToBounds="True">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FFFFFF" Offset="0"/>
+                        <GradientStop Color="#F0F9FF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="32" ShadowDepth="8" Opacity="0.22" Color="#0F172A"/>
+                </Border.Effect>
+                <DockPanel>
+                    <!-- Header -->
+                    <Border DockPanel.Dock="Top" Padding="22,18,16,16"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#FFFFFF" Offset="0"/>
+                                <GradientStop Color="#E0F2FE" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Padding="8,2"
+                                    VerticalAlignment="Top" Margin="8,0,0,0"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnCloseHowToUseClick"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="40" Height="40" CornerRadius="10" Margin="0,0,14,0"
+                                        Background="{StaticResource AccentBrush}"
+                                        VerticalAlignment="Top">
+                                    <TextBlock Text="?" Foreground="White" FontSize="18" FontWeight="Bold"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="USER GUIDE" FontSize="9" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentBrush}" Margin="0,0,0,2"/>
+                                    <TextBlock Text="How to Use" FontSize="20" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Dashboard · Data Entry · Store List · Metrics"
+                                               FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                               Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Footer -->
+                    <Border DockPanel.Dock="Bottom" Background="White"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                            Padding="22,12">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="Press Esc to close"
+                                       FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center"/>
+                            <Button Content="Got it" Style="{StaticResource PrimaryButtonStyle}"
+                                    HorizontalAlignment="Right" Padding="20,8"
+                                    Click="OnCloseHowToUseClick"/>
+                        </DockPanel>
+                    </Border>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="22,16,14,12">
+                        <StackPanel Margin="0,0,8,4">
+
+                            <!-- Getting started -->
+                            <Border Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Border Width="22" Height="22" CornerRadius="6" Background="#E0F2FE" Margin="0,0,8,0">
+                                            <TextBlock Text="1" FontSize="11" FontWeight="Bold" Foreground="#0369A1"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Getting started" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                               TextWrapping="Wrap" LineHeight="19"
+                                               Text="Use the header tabs to switch views. Edits auto-save — watch the status text in the top-right."/>
+                                    <UniformGrid Columns="3" Margin="0,12,0,0">
+                                        <Border Background="#F0F9FF" CornerRadius="8" Padding="10,8" Margin="0,0,6,0">
+                                            <StackPanel>
+                                                <TextBlock Text="Dashboard" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AccentBrush}"/>
+                                                <TextBlock Text="KPIs &amp; charts" FontSize="11"
+                                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#F0F9FF" CornerRadius="8" Padding="10,8" Margin="0,0,6,0">
+                                            <StackPanel>
+                                                <TextBlock Text="Data Entry" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AccentBrush}"/>
+                                                <TextBlock Text="Enter TY &amp; TGT" FontSize="11"
+                                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#F0F9FF" CornerRadius="8" Padding="10,8">
+                                            <StackPanel>
+                                                <TextBlock Text="Store List" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AccentBrush}"/>
+                                                <TextBlock Text="Manage stores" FontSize="11"
+                                                           Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Dashboard -->
+                            <Border Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Border Width="22" Height="22" CornerRadius="6" Background="#E0F2FE" Margin="0,0,8,0">
+                                            <TextBlock Text="2" FontSize="11" FontWeight="Bold" Foreground="#0369A1"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Dashboard" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <DockPanel Margin="0,0,0,7">
+                                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                     Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                       TextWrapping="Wrap" LineHeight="18"
+                                                       Text="Pick Year, Store, and one or more Months (All / Clear). Multi-month selection consolidates totals."/>
+                                        </DockPanel>
+                                        <DockPanel Margin="0,0,0,7">
+                                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                     Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                       TextWrapping="Wrap" LineHeight="18"
+                                                       Text="KPI cards: Sales, Cost of Sales, Gross Profit, Total OPEX, SBU CM, SBU EBITDA, Net Income."/>
+                                        </DockPanel>
+                                        <DockPanel Margin="0,0,0,7">
+                                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                     Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                       TextWrapping="Wrap" LineHeight="18"
+                                                       Text="Each card shows GR, vs TGT, and vs LY. Some also show % of sales."/>
+                                        </DockPanel>
+                                        <DockPanel Margin="0,0,0,7">
+                                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                     Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                       TextWrapping="Wrap" LineHeight="18"
+                                                       Text="Click Total OPEX or SBU EBITDA for a breakdown of account composition."/>
+                                        </DockPanel>
+                                        <DockPanel Margin="0,0,0,7">
+                                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                     Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                       TextWrapping="Wrap" LineHeight="18"
+                                                       Text="Monthly sales trend always shows all 12 months (month filter is ignored on the chart)."/>
+                                        </DockPanel>
+                                        <DockPanel>
+                                            <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                     Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                            <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                       TextWrapping="Wrap" LineHeight="18"
+                                                       Text="Top 5 operating expenses ranked by |TY|, with % UTIL, % OPEX, % SALES, and VS LY."/>
+                                        </DockPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Data Entry -->
+                            <Border Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Border Width="22" Height="22" CornerRadius="6" Background="#E0F2FE" Margin="0,0,8,0">
+                                            <TextBlock Text="3" FontSize="11" FontWeight="Bold" Foreground="#0369A1"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Data Entry" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <DockPanel Margin="0,0,0,7">
+                                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                 Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                   TextWrapping="Wrap" LineHeight="18"
+                                                   Text="Filter by Year, Month, and Store. Enter TY (this year) and TGT (target) only."/>
+                                    </DockPanel>
+                                    <DockPanel Margin="0,0,0,7">
+                                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                 Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                   TextWrapping="Wrap" LineHeight="18"
+                                                   Text="LY is automatic — last year’s TY for the same Month / Store / Account (e.g. 2026 → LY from 2025)."/>
+                                    </DockPanel>
+                                    <DockPanel>
+                                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                 Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                   TextWrapping="Wrap" LineHeight="18"
+                                                   Text="Export / Import xlsx: DATA + Stores format, or FO MPT workbook (e.g. JUNE 2026_FO1 MPT per Format.xlsx). Reset clears all TY/TGT after confirmation. No Save button needed."/>
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Store List -->
+                            <Border Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <Border Width="22" Height="22" CornerRadius="6" Background="#E0F2FE" Margin="0,0,8,0">
+                                            <TextBlock Text="4" FontSize="11" FontWeight="Bold" Foreground="#0369A1"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="Store List" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <DockPanel Margin="0,0,0,7">
+                                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                 Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                   TextWrapping="Wrap" LineHeight="18"
+                                                   Text="Add a store (name + optional group) to create blank DATA rows for every year × month × account."/>
+                                    </DockPanel>
+                                    <DockPanel>
+                                        <Ellipse DockPanel.Dock="Left" Width="6" Height="6" Fill="{StaticResource AccentBrush}"
+                                                 Margin="2,6,10,0" VerticalAlignment="Top"/>
+                                        <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                   TextWrapping="Wrap" LineHeight="18"
+                                                   Text="Rename or change Group in the grid. Remove deletes the selected store and its data rows."/>
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Metrics -->
+                            <Border Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Border Width="22" Height="22" CornerRadius="6" Background="#E0F2FE" Margin="0,0,8,0">
+                                            <TextBlock Text="5" FontSize="11" FontWeight="Bold" Foreground="#0369A1"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="How metrics are calculated" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                               TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,10"
+                                               Text="All KPIs come from Data Entry detail accounts for the selected Year, Month(s), and Store. LY uses the same formula on prior-year TY."/>
+
+                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextWrapping="Wrap" LineHeight="17"
+                                                   Text="Sales = Σ Sales    ·    Cost of Sales = Σ Cost of Sales    ·    Gross Profit = Sales − Cost of Sales + Miscellaneous Income"/>
+                                    </Border>
+                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextWrapping="Wrap" LineHeight="17"
+                                                   Text="Total OPEX = store operating expenses (excludes HO, Corp &amp; EO, Interest, GOC)"/>
+                                    </Border>
+                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextWrapping="Wrap" LineHeight="17"
+                                                   Text="SBU CM = Gross Profit − Total OPEX − HO    ·    SBU EBITDA = SBU CM + Depreciation + Amortization + HO DA"/>
+                                    </Border>
+                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="10,8" Margin="0,0,0,6">
+                                        <TextBlock FontSize="11.5" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextWrapping="Wrap" LineHeight="17"
+                                                   Text="Net Income = SBU CM − Corp &amp; EO Share − Interest Expense − GOC Expenses"/>
+                                    </Border>
+                                    <WrapPanel Margin="0,4,0,0">
+                                        <Border Background="#E0F2FE" CornerRadius="6" Padding="8,4" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#0369A1"
+                                                       Text="GR / vs LY = (TY − LY) / |LY|"/>
+                                        </Border>
+                                        <Border Background="#E0F2FE" CornerRadius="6" Padding="8,4" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#0369A1"
+                                                       Text="vs TGT = (TY − TGT) / |TGT|"/>
+                                        </Border>
+                                        <Border Background="#E0F2FE" CornerRadius="6" Padding="8,4" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#0369A1"
+                                                       Text="% of sales = TY ÷ Sales TY"/>
+                                        </Border>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Tip callout -->
+                            <Border Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1"
+                                    CornerRadius="10" Padding="14,12">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Width="28" Height="28" CornerRadius="8"
+                                            Background="#F59E0B" Margin="0,0,12,0" VerticalAlignment="Top">
+                                        <TextBlock Text="!" Foreground="White" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel>
+                                        <TextBlock Text="Reset with confirmation" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#92400E" Margin="0,0,0,3"/>
+                                        <TextBlock FontSize="12" Foreground="#A16207"
+                                                   TextWrapping="Wrap" LineHeight="18"
+                                                   Text="On Data Entry, use Reset to clear all TY and TGT values across every year, month, store, and account. You will be asked to confirm before any data is wiped."/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
     </Grid>
 </Window>

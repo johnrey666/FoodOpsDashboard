@@ -13,4 +13,8 @@
          completely offline once the .NET 8 SDK is installed. -->
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="tools\**" />
+  </ItemGroup>
+
 </Project>

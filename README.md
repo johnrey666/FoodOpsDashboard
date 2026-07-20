@@ -9,11 +9,11 @@ All KPIs are **derived from Data Entry detail accounts** for the selected **Year
 |--------|---------|
 | **Sales** | Sum of account `Sales` |
 | **Cost of Sales** | Sum of account `Cost of Sales` |
-| **Gross Profit** | Sales − Cost of Sales |
-| **Total OPEX** | Sum of **all accounts except** `Sales` and `Cost of Sales` (**includes HO**) |
-| **SBU CM** | Gross Profit − (all accounts **except** `Sales`, `Cost of Sales`, and **HO**) |
-| **SBU EBITDA** | SBU CM + `Depreciation` + `Amortization` |
-| **Net Income** | Gross Profit − Total OPEX |
+| **Gross Profit** | Sales − Cost of Sales + `Miscellaneous Income` |
+| **Total OPEX** | Sum of **store operating expense** detail accounts (MPT: TOTAL STORE OPERATING EXPENSES) |
+| **SBU CM** | Gross Profit − Total OPEX − **HO** |
+| **SBU EBITDA** | SBU CM + `Depreciation` + `Amortization` + `HO DA` |
+| **Net Income** | SBU CM − `Corp & EO Share` − `Interest Expense` − `GOC Expenses` |
 
 ### Card extras
 
@@ -29,7 +29,8 @@ All KPIs are **derived from Data Entry detail accounts** for the selected **Year
 | Item | Formula |
 |------|---------|
 | **HO** | Head Office allocation account. Excluded from SBU CM; included in Total OPEX. |
-| **Top 5 operating expenses** | Expense accounts (not Sales / Cost of Sales / HO), ranked by \|TY\|, top 5 |
+| **HO DA** | Head Office depreciation/amortization. Added back for SBU EBITDA. |
+| **Top 5 operating expenses** | Expense accounts (excludes Sales, COGS, Misc. Income, HO, HO DA, Corp & EO Share, Interest, GOC), ranked by \|TY\|, top 5 |
 | **% UTIL** | Account TY ÷ Account TGT |
 | **% OPEX** | Account TY ÷ Total OPEX |
 | **% SALES** | Account TY ÷ Sales |
@@ -71,7 +72,7 @@ dotnet run
 ## Data storage
 
 - Day-to-day: use **Data Entry** and **Store List** — edits auto-save (no Save button).
-- **Export xlsx** / **Import xlsx** on Data Entry: share a full year (DATA + Stores sheets) between PCs.
+- **Export xlsx** / **Import xlsx** on Data Entry: share a full year (DATA + Stores sheets) between PCs, or import an **FO MPT workbook** (e.g. `JUNE 2026_FO1 MPT per Format.xlsx`) with group sheets and month columns.
 - To wipe local edits and re-seed from the embedded Excel export, delete the
   folder `%LocalAppData%\FoodOpsDashboard\` and restart the app.
 

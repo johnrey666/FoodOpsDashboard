@@ -59,15 +59,39 @@ public static class ExcelExchange
     public static (int Year, int Updated, int AddedStores) Import(string path, DataRepository repo)
     {
         using var zip = ZipFile.OpenRead(path);
+        var sheets = ListSheetPaths(zip);
+
+        if (sheets.ContainsKey("DATA") || sheets.ContainsKey("Data"))
+            return ImportDataSheet(zip, sheets, repo);
+
+        if (sheets.ContainsKey("conso"))
+            return MptExcelImporter.Import(path, repo);
+
+        throw new InvalidOperationException("Workbook must contain a DATA sheet or FO MPT format (conso + group sheets).");
+    }
+
+    internal static Dictionary<string, string> ListSheetPaths(ZipArchive zip) => ListSheets(zip);
+
+    internal static List<List<string>> ReadSheetRows(ZipArchive zip, string sheetPath)
+    {
         var shared = ReadSharedStrings(zip);
-        var sheets = ListSheets(zip);
+        return ReadSheetRows(zip, sheetPath, shared);
+    }
 
+    private static (int Year, int Updated, int AddedStores) ImportDataSheet(
+        ZipArchive zip,
+        Dictionary<string, string> sheets,
+        DataRepository repo)
+    {
         if (!sheets.TryGetValue("DATA", out var dataPath) && !sheets.TryGetValue("Data", out dataPath))
-            throw new InvalidOperationException("Workbook must contain a sheet named DATA.");
+            throw new InvalidOperationException("DATA sheet not found.");
 
-        var dataRows = ReadSheetRows(zip, dataPath, shared);
+        var dataRows = ReadSheetRows(zip, dataPath, ReadSharedStrings(zip));
+
         if (dataRows.Count == 0)
             throw new InvalidOperationException("DATA sheet is empty.");
+
+        var shared = ReadSharedStrings(zip);
 
         // Header map
         var header = dataRows[0].Select(h => h.Trim()).ToList();
@@ -141,7 +165,8 @@ public static class ExcelExchange
             var row = dataRows[i];
             string month = Get(row, cMonth).Trim();
             string store = Get(row, cStore).Trim();
-            string account = Get(row, cAccount).Trim();
+            string accountRaw = Get(row, cAccount).Trim();
+            string? account = AccountCatalog.Normalize(accountRaw) ?? accountRaw;
             if (string.IsNullOrWhiteSpace(month) || string.IsNullOrWhiteSpace(store) || string.IsNullOrWhiteSpace(account))
                 continue;
 

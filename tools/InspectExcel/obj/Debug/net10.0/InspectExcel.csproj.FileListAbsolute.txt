@@ -1,0 +1,15 @@
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\bin\Debug\net10.0\InspectExcel.exe
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\bin\Debug\net10.0\InspectExcel.deps.json
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\bin\Debug\net10.0\InspectExcel.runtimeconfig.json
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\bin\Debug\net10.0\InspectExcel.dll
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\bin\Debug\net10.0\InspectExcel.pdb
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.AssemblyInfoInputs.cache
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.AssemblyInfo.cs
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.csproj.CoreCompileInputs.cache
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.sourcelink.json
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.dll
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\refint\InspectExcel.dll
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.pdb
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\InspectExcel.genruntimeconfig.cache
+c:\Users\fo.technicalsupport\FoodOpsDashboard\tools\InspectExcel\obj\Debug\net10.0\ref\InspectExcel.dll
